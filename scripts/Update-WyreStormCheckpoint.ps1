@@ -16,6 +16,8 @@ param(
     [string]$LastCompletedRecord = "",
     [string]$ActiveBlockers = "none",
 
+    [string]$SessionNonce = "",
+
     [ValidateSet("", "pending", "complete")]
     [string]$IntakeStatus = "",
 
@@ -63,6 +65,17 @@ if ($schemaVersion -ge 3) {
         }
     }
 }
+if ($schemaVersion -ge 4) {
+    if (-not ($oldCheckpoint.PSObject.Properties.Name -contains "session_nonce") -or -not $oldCheckpoint.session_nonce) {
+        throw "Schema v4 checkpoint is missing session_nonce."
+    }
+    if (-not $SessionNonce) {
+        throw "SessionNonce is required for a session-scoped case."
+    }
+    if (-not [string]::Equals([string]$oldCheckpoint.session_nonce, $SessionNonce, [System.StringComparison]::Ordinal)) {
+        throw "SessionNonce does not match this case. Do not resume a different session's records."
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
 $commands = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "command-catalog.csv"))
@@ -74,6 +87,16 @@ $scanMode = if ($oldCheckpoint.PSObject.Properties.Name -contains "scan_mode" -a
     [string]$oldCheckpoint.scan_mode
 } else {
     "audit"
+}
+$sessionScope = if ($oldCheckpoint.PSObject.Properties.Name -contains "session_scope" -and $oldCheckpoint.session_scope) {
+    [string]$oldCheckpoint.session_scope
+} else {
+    "legacy_unspecified"
+}
+$checkpointSessionNonce = if ($oldCheckpoint.PSObject.Properties.Name -contains "session_nonce" -and $oldCheckpoint.session_nonce) {
+    [string]$oldCheckpoint.session_nonce
+} else {
+    $null
 }
 $oldIntakeStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "intake_status" -and $oldCheckpoint.intake_status) {
     [string]$oldCheckpoint.intake_status
@@ -152,6 +175,8 @@ $checkpoint = [ordered]@{
     schema_version = if ($schemaVersion -ge 3) { $schemaVersion } else { 2 }
     case_id = $oldCheckpoint.case_id
     case_root = $resolvedCaseRoot
+    session_scope = $sessionScope
+    session_nonce = $checkpointSessionNonce
     scan_mode = $scanMode
     status = $CaseStatus
     intake_status = $intakeStatusValue
@@ -186,6 +211,8 @@ Move-Item -LiteralPath $checkpointTemp -Destination (Join-Path $resolvedCaseRoot
 $handoff = @"
 # Session handoff
 
+- Session scope: $sessionScope
+- Session nonce: $(if ($checkpointSessionNonce) { $checkpointSessionNonce } else { "legacy-unavailable" })
 - Scan mode: $scanMode
 - Case status: $CaseStatus
 - Intake status: $intakeStatusValue
@@ -198,7 +225,7 @@ $handoff = @"
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md`` before issuing a command
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))

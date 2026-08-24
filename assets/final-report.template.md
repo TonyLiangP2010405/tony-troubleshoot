@@ -1,5 +1,7 @@
 # WyreStorm diagnostic report
 
+Temporary current-session working report. It will be consolidated into `resolution-summary.md` and deleted after the customer explicitly confirms resolution.
+
 ## Outcome
 
 Scan mode: **record from checkpoint.json**
@@ -38,6 +40,6 @@ For `triage`, list the audit-tier areas intentionally not executed. For `deep`, 
 
 List unavailable items and intentionally unscanned areas. In `audit`, any unresolved item keeps the overall status partial/incomplete.
 
-## Resume/audit instructions
+## Current-session resume/audit instructions
 
-Point to `session-handoff.md`, `checkpoint.json`, `intake.md`, `user-actions.csv`, `classification.md`, other ledgers, and raw evidence.
+Point to temporary evidence only for compacting or model switches within this same conversation. Do not instruct a future session to resume this case.

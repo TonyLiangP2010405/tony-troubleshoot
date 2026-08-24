@@ -10,6 +10,9 @@ param(
     [ValidateSet("triage", "deep", "audit")]
     [string]$ScanMode = "triage",
 
+    [ValidateNotNullOrEmpty()]
+    [string]$SessionNonce = ([guid]::NewGuid().ToString("N")),
+
     [string]$CaseId = ("wyrestorm-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
 )
 
@@ -107,9 +110,11 @@ $nextAction = switch ($ScanMode) {
     "audit" { "Complete intake and user action history, make a provisional classification, then verify prerequisites and build the complete command catalog" }
 }
 $checkpoint = [ordered]@{
-    schema_version = 3
+    schema_version = 4
     case_id = $CaseId
     case_root = $resolvedCaseRoot
+    session_scope = "current_session_only"
+    session_nonce = $SessionNonce
     scan_mode = $ScanMode
     status = "initialized"
     intake_status = "pending"
@@ -139,9 +144,13 @@ $checkpoint | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $res
 
 $handoffPath = Join-Path $resolvedCaseRoot "session-handoff.md"
 $handoff = Get-Content -Raw -LiteralPath $handoffPath
-$handoff = $handoff.Replace("{{SCAN_MODE}}", $ScanMode).Replace("{{NEXT_ACTION}}", $nextAction).Replace("{{UPDATED_AT}}", $now)
+$handoff = $handoff.Replace("{{SESSION_NONCE}}", $SessionNonce).Replace("{{SCAN_MODE}}", $ScanMode).Replace("{{NEXT_ACTION}}", $nextAction).Replace("{{UPDATED_AT}}", $now)
 Set-Content -LiteralPath $handoffPath -Value $handoff -Encoding utf8
 
 Add-Content -LiteralPath (Join-Path $resolvedCaseRoot "checkpoint-log.md") -Value "`n- $now — Case initialized as ``$CaseId`` in ``$ScanMode`` mode with $($docRows.Count) API document source(s)."
 
-Write-Output $resolvedCaseRoot
+Write-Output ([pscustomobject]@{
+    CaseRoot = $resolvedCaseRoot
+    SessionNonce = $SessionNonce
+    ScanMode = $ScanMode
+})
