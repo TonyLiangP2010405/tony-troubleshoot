@@ -1,4 +1,4 @@
 interface:
   display_name: "Tony Troubleshoot"
-  short_description: "依据设备 API 文档全量采集在线设备信息并可断点续查"
-  default_prompt: "使用 $tony-troubleshoot，根据 API 命令文档全量排查所有在线 WyreStorm 设备，并在本地保存可续查检查点。"
+  short_description: "先记录用户操作并分类，再分层排查 WyreStorm 设备"
+  default_prompt: "使用 $tony-troubleshoot，先完整记录我点过、改过和动过的线，再按故障类别判断并依据 API 文档分层排查。"
