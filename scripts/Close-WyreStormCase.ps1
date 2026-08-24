@@ -75,7 +75,7 @@ $summary = Get-Content -Raw -LiteralPath $summaryPath
 if ($summary.Trim().Length -lt 300) {
     throw "The resolution summary is too short to preserve the diagnostic process."
 }
-$unfinishedMarkers = @("{{", "not assessed", "Describe the original symptom", "Summarize relevant devices", "State the confirmed root cause")
+$unfinishedMarkers = @("{{", "not assessed", "Describe the original symptom", "Summarize relevant devices", "Summarize any additional customer-provided files", "State the confirmed root cause")
 foreach ($marker in $unfinishedMarkers) {
     if ($summary.IndexOf($marker, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
         throw "The resolution summary still contains an unfinished template marker: $marker"

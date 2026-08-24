@@ -5,6 +5,7 @@
 - Intake status: **pending**
 - Record `complete` only after every required item below has an answer or is explicitly marked **unknown / uncertain / not remembered**.
 - Ask one focused follow-up for any high-impact ambiguity; do not block indefinitely on unknowable details.
+- Before completion, ask the open-ended additional-files question below once. A clear answer of **none** satisfies this gate.
 
 ## Symptom in the user's own words
 
@@ -38,6 +39,17 @@ Do not equate an action with a cause. Do not ask the user to repeat a completed 
 - Indicator lights/error messages:
 - Measurements:
 
+## Additional diagnostic files
+
+After requesting the expected evidence, ask: **“Apart from the items already mentioned, do you have any other files or materials that might help diagnose the problem?”** Examples may include configuration exports, complete logs, screenshots/screen recordings, topology diagrams, switch configuration, event timestamps, firmware details, packet captures, or third-party device reports; do not limit the customer to this list.
+
+- Question asked: **no**
+- Customer response: (`provided`, `none`, `unknown`, or `will_provide_later`)
+- Additional file/material inventory and why each may be relevant:
+- Files promised later and expected time:
+- Customer reminded to remove credentials, tokens, private keys, session cookies, and unrelated personal information: **no**
+- Redactions or access limitations:
+
 ## Explicit unknowns and contradictions
 
 - Unknowns:
@@ -49,4 +61,5 @@ Do not equate an action with a cause. Do not ask the user to repeat a completed 
 - Completed at:
 - Completed by:
 - High-impact unknowns carried forward:
+- Additional-files question completed: **no**
 - `checkpoint.json` updated to `intake_status=complete`: **no**

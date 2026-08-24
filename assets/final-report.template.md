@@ -22,6 +22,8 @@ Report primary and secondary categories, `confirmed` or `inconclusive` status, c
 
 Record mode, timezone, start/end timestamps, endpoints, in-scope models/firmware, API profiles/cohorts, document IDs and hashes, and redaction policy.
 
+Also summarize any additional files the customer volunteered, how each influenced the diagnosis, any promised-but-unreceived material, and the sensitive-data redactions applied.
+
 ## Online device inventory
 
 Summarize devices and link each item to discovery evidence.

@@ -28,6 +28,8 @@ Summarize clicks, setting changes with known before/after values, cable moves/re
 
 Summarize the important checks, observations, contradictions, and evidence in chronological order. Embed the useful result; do not rely on links to temporary case files.
 
+Summarize any additional customer-provided files that materially influenced the diagnosis and what was learned from them; the temporary copies will be deleted at closure.
+
 ## Root cause
 
 State the confirmed root cause. If the problem is resolved but the root cause remains uncertain, say so and list the strongest supported explanation and exclusions.
