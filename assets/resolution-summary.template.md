@@ -28,7 +28,7 @@ Summarize clicks, setting changes with known before/after values, cable moves/re
 
 Summarize the important checks, observations, contradictions, and evidence in chronological order. Embed the useful result; do not rely on links to temporary case files.
 
-Summarize any additional customer-provided files that materially influenced the diagnosis and what was learned from them; the temporary copies will be deleted at closure.
+Summarize every customer-provided file that materially influenced the diagnosis, the verified scope reviewed, exact evidence locations, contradictions or unreadable portions, and what was learned; the temporary copies and detailed review ledger will be deleted at closure.
 
 Summarize the WyreStorm official sources and model/version-specific facts that materially influenced the diagnosis. Embed the useful fact and exact URL because the temporary official-research file will be deleted at closure. If the official site was unavailable, preserve that limitation and the substitute source used.
 

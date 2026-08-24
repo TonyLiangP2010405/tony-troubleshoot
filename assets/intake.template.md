@@ -38,6 +38,7 @@ Do not equate an action with a cause. Do not ask the user to repeat a completed 
 - Logs/exported configuration:
 - Indicator lights/error messages:
 - Measurements:
+- Every received file has been added to `source/customer-file-index.csv`: **no**
 
 ## Additional diagnostic files
 
@@ -49,6 +50,7 @@ After requesting the expected evidence, ask: **“Apart from the items already m
 - Files promised later and expected time:
 - Customer reminded to remove credentials, tokens, private keys, session cookies, and unrelated personal information: **no**
 - Redactions or access limitations:
+- Customer-file review status after intake: **pending** (`none_provided` only when no files were received)
 
 ## Explicit unknowns and contradictions
 

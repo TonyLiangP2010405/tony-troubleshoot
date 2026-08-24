@@ -14,6 +14,10 @@ For `triage` or `deep`, describe the selected scope and do not claim full API co
 
 Summarize the user's original symptom and the relevant ordered rows from `user-actions.csv`: clicks, setting changes with old/new values, cable moves/reseats/swaps/replacements and both endpoints, restarts/resets, firmware/config changes, results, and whether each change was reverted. Clearly separate temporal correlation from supported cause.
 
+## Customer-provided file review
+
+List every received file, its hash, total verifiable scope, scope actually inspected, review method, key facts with exact page/sheet/cell/line/timestamp/frame locations, contradictions, and unreadable or skipped portions. Explain how each relevant file affected the classification or diagnostic plan. Do not claim complete review when any high-impact content remains unreadable.
+
 ## Final problem classification
 
 Report primary and secondary categories, `confirmed` or `inconclusive` status, confidence, supporting and contradicting evidence, excluded alternatives, and any change from the provisional intake classification.

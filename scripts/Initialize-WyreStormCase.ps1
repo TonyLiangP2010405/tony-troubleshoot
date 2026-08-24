@@ -30,8 +30,9 @@ if (Test-Path -LiteralPath $resolvedCaseRoot) {
 
 $sourceRoot = Join-Path $resolvedCaseRoot "source"
 $apiDocRoot = Join-Path $sourceRoot "api-docs"
+$customerFileRoot = Join-Path $sourceRoot "customer-files"
 $rawRoot = Join-Path $resolvedCaseRoot "raw"
-New-Item -ItemType Directory -Path $sourceRoot, $apiDocRoot, $rawRoot | Out-Null
+New-Item -ItemType Directory -Path $sourceRoot, $apiDocRoot, $customerFileRoot, $rawRoot | Out-Null
 
 $docRows = @()
 $docOrdinal = 0
@@ -77,6 +78,7 @@ foreach ($document in $ApiDocument) {
 }
 
 $docRows | Export-Csv -LiteralPath (Join-Path $sourceRoot "api-doc-index.csv") -NoTypeInformation -Encoding utf8
+Set-Content -LiteralPath (Join-Path $sourceRoot "customer-file-index.csv") -Value "file_id,original_name,preserved_path,sha256,file_type,size_bytes,received_at,customer_description,relevance,total_scope,reviewed_scope,review_status,unreadable_scope,evidence_locations,notes" -Encoding utf8
 
 $csvHeaders = @{
     "command-catalog.csv" = "command_id,api_profile_id,document_id,doc_location,raw_command,transport,scope,classification,scan_tier,cost_class,applicability,parameters,parameter_strategy,response_fields,pagination,mutating,requires_approval,notes"
@@ -93,6 +95,7 @@ $skillRoot = Split-Path -Parent $PSScriptRoot
 $assetRoot = Join-Path $skillRoot "assets"
 $templateMap = @{
     "intake.template.md" = "intake.md"
+    "customer-file-review.template.md" = "customer-file-review.md"
     "official-research.template.md" = "wyrestorm-official-research.md"
     "classification.template.md" = "classification.md"
     "findings.template.md" = "findings.md"
@@ -106,12 +109,12 @@ foreach ($entry in $templateMap.GetEnumerator()) {
 
 $now = (Get-Date).ToString("o")
 $nextAction = switch ($ScanMode) {
-    "triage" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then verify API documents, scope, endpoint, and access" }
-    "deep" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then define the fault domain and its minimum sufficient command set" }
-    "audit" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then verify prerequisites and build the complete command catalog" }
+    "triage" { "Complete intake and user action history, fully review all customer-provided files, complete targeted WyreStorm official research, make a provisional classification, then verify API documents, scope, endpoint, and access" }
+    "deep" { "Complete intake and user action history, fully review all customer-provided files, complete targeted WyreStorm official research, make a provisional classification, then define the fault domain and its minimum sufficient command set" }
+    "audit" { "Complete intake and user action history, fully review all customer-provided files, complete targeted WyreStorm official research, make a provisional classification, then verify prerequisites and build the complete command catalog" }
 }
 $checkpoint = [ordered]@{
-    schema_version = 5
+    schema_version = 6
     case_id = $CaseId
     case_root = $resolvedCaseRoot
     session_scope = "current_session_only"
@@ -120,6 +123,8 @@ $checkpoint = [ordered]@{
     status = "initialized"
     intake_status = "pending"
     intake_completed_at = $null
+    customer_file_review_status = "pending"
+    customer_file_review_updated_at = $null
     official_research_status = "not_started"
     official_research_updated_at = $null
     classification_status = "not_started"

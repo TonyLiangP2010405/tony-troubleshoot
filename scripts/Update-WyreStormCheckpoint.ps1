@@ -21,6 +21,9 @@ param(
     [ValidateSet("", "pending", "complete")]
     [string]$IntakeStatus = "",
 
+    [ValidateSet("", "pending", "complete", "none_provided", "blocked")]
+    [string]$CustomerFileReviewStatus = "",
+
     [ValidateSet("", "not_started", "complete", "unavailable")]
     [string]$OfficialResearchStatus = "",
 
@@ -85,8 +88,21 @@ if ($schemaVersion -ge 5) {
         throw "Required schema v5 case file is missing: $officialResearchPath"
     }
 }
+if ($schemaVersion -ge 6) {
+    foreach ($relativePath in @("source\customer-file-index.csv", "customer-file-review.md")) {
+        $fullPath = Join-Path $resolvedCaseRoot $relativePath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "Required schema v6 case file is missing: $fullPath"
+        }
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
+$customerFiles = if ($schemaVersion -ge 6) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\customer-file-index.csv"))
+} else {
+    @()
+}
 $commands = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "command-catalog.csv"))
 $devices = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "device-inventory.csv"))
 $ledger = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "progress-ledger.csv"))
@@ -119,6 +135,25 @@ $intakeCompletedAtValue = if ($IntakeStatus -eq "complete" -and $oldIntakeStatus
     $null
 } elseif ($oldCheckpoint.PSObject.Properties.Name -contains "intake_completed_at") {
     $oldCheckpoint.intake_completed_at
+} else {
+    $null
+}
+$oldCustomerFileReviewStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "customer_file_review_status" -and $oldCheckpoint.customer_file_review_status) {
+    [string]$oldCheckpoint.customer_file_review_status
+} elseif ($schemaVersion -ge 6) {
+    "pending"
+} else {
+    "legacy_untracked"
+}
+$customerFileReviewStatusValue = if ($CustomerFileReviewStatus) {
+    $CustomerFileReviewStatus
+} else {
+    $oldCustomerFileReviewStatus
+}
+$customerFileReviewUpdatedAtValue = if ($PSBoundParameters.ContainsKey("CustomerFileReviewStatus")) {
+    $now
+} elseif ($oldCheckpoint.PSObject.Properties.Name -contains "customer_file_review_updated_at") {
+    $oldCheckpoint.customer_file_review_updated_at
 } else {
     $null
 }
@@ -184,6 +219,21 @@ $classificationUpdatedAtValue = if ($classificationWasUpdated) {
 if ($classificationStatusValue -ne "not_started" -and $intakeStatusValue -ne "complete") {
     throw "Complete intake before setting a problem classification."
 }
+if ($schemaVersion -ge 6 -and $customerFileReviewStatusValue -eq "none_provided" -and $customerFiles.Count -gt 0) {
+    throw "Customer files are indexed; CustomerFileReviewStatus cannot be none_provided."
+}
+if ($schemaVersion -ge 6 -and $customerFileReviewStatusValue -eq "complete") {
+    if ($customerFiles.Count -eq 0) {
+        throw "No customer files are indexed; use CustomerFileReviewStatus none_provided."
+    }
+    $unfinishedCustomerFiles = @($customerFiles | Where-Object { $_.review_status -ne "complete" })
+    if ($unfinishedCustomerFiles.Count -gt 0) {
+        throw "Every indexed customer file must have review_status=complete before completing customer-file review."
+    }
+}
+if ($schemaVersion -ge 6 -and $classificationStatusValue -ne "not_started" -and $customerFileReviewStatusValue -notin @("complete", "none_provided")) {
+    throw "Fully review all customer-provided files or record that none were provided before setting a problem classification."
+}
 if ($schemaVersion -ge 5 -and $classificationStatusValue -ne "not_started" -and $officialResearchStatusValue -notin @("complete", "unavailable")) {
     throw "Complete targeted WyreStorm official research or explicitly mark it unavailable before setting a problem classification."
 }
@@ -212,6 +262,8 @@ $checkpoint = [ordered]@{
     status = $CaseStatus
     intake_status = $intakeStatusValue
     intake_completed_at = $intakeCompletedAtValue
+    customer_file_review_status = $customerFileReviewStatusValue
+    customer_file_review_updated_at = $customerFileReviewUpdatedAtValue
     official_research_status = $officialResearchStatusValue
     official_research_updated_at = $officialResearchUpdatedAtValue
     classification_status = $classificationStatusValue
@@ -249,6 +301,7 @@ $handoff = @"
 - Scan mode: $scanMode
 - Case status: $CaseStatus
 - Intake status: $intakeStatusValue
+- Customer file review status: $customerFileReviewStatusValue
 - WyreStorm official research status: $officialResearchStatusValue
 - Classification: $classificationStatusValue / $(if ($primaryCategoryValue) { $primaryCategoryValue } else { "none" }) / $(if ($classificationConfidenceValue) { $classificationConfidenceValue } else { "none" }) confidence
 - Secondary categories: $(if ($secondaryCategoriesValue.Count -gt 0) { $secondaryCategoriesValue -join ", " } else { "none" })
@@ -259,7 +312,7 @@ $handoff = @"
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))
