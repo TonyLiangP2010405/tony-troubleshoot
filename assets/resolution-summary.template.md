@@ -32,6 +32,8 @@ Summarize every customer-provided file that materially influenced the diagnosis,
 
 Summarize the WyreStorm official sources and model/version-specific facts that materially influenced the diagnosis. Embed the useful fact and exact URL because the temporary official-research file will be deleted at closure. If the official site was unavailable, preserve that limitation and the substitute source used.
 
+Summarize the baseline type and provenance, meaningful differences or verified zero-difference scope, and any reboot/factory-reset decision. Preserve the authorization, backup/recovery safeguards, outcome, and the exact limit of what the outcome proves because temporary baseline files will be deleted.
+
 ## Root cause
 
 State the confirmed root cause. If the problem is resolved but the root cause remains uncertain, say so and list the strongest supported explanation and exclusions.

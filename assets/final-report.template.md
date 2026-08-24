@@ -40,9 +40,13 @@ Summarize devices and link each item to discovery evidence.
 
 Summarize confirmed facts first, then interpretations, with raw evidence paths. For every deep-dive device, include the anomaly or symptom that selected it.
 
+## Baseline and device intrinsic state
+
+State which baselines were available and label each as known-good, pre-fault, session-start, post-action, or resolved. Report normalized differences and the limits of any zero-difference claim. If reboot or factory reset was used, record its authorization, exact scope, backup/recovery plan, result, and what the result does and does not prove.
+
 ## Coverage proof
 
-Report core/diagnostic/audit command counts, selected parameter rows, devices, pages/cursors, response fields, completions, failures, unsupported items, and blockers.
+Report core/diagnostic/audit command counts, selected parameter rows, devices, pages/cursors, response fields, completions, failures, unsupported items, and blockers. Separate lightweight essential-field checks from full field audits.
 
 For `triage`, list the audit-tier areas intentionally not executed. For `deep`, state the fault-domain boundary. For `audit`, record the two final discovery passes and prove full command/parameter/field coverage.
 

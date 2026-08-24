@@ -1,6 +1,6 @@
 # Problem classification
 
-Use category IDs from `references/troubleshooting-taxonomy.md` in the Skill. Classify only after intake is complete.
+Use category IDs from `references/troubleshooting-taxonomy.md` in the Skill. Classify only after intake, customer-file review, and official-research gates are satisfied.
 
 ## Current classification
 
@@ -9,6 +9,7 @@ Use category IDs from `references/troubleshooting-taxonomy.md` in the Skill. Cla
 - Primary category:
 - Secondary categories:
 - Confidence: (`low`, `medium`, or `high`)
+- Diagnostic dimensions: (`visible_parameter_state`, `volatile_runtime_state`, `persistent_internal_state`, `external_path`, or other evidence-based dimensions)
 
 ## Basis
 
@@ -19,6 +20,7 @@ Use category IDs from `references/troubleshooting-taxonomy.md` in the Skill. Cla
 - Important alternatives excluded:
 - Remaining information gaps:
 - Smallest next verification:
+- Baseline used and whether it is truly pre-fault or only session-start:
 
 ## Causality caution
 

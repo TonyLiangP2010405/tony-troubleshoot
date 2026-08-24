@@ -16,6 +16,10 @@ Summarize the complete customer-file inventory, verified review scope, key facts
 
 Record the active mode, fleet-wide core sweep, cohort definitions, and why each device or problem domain was selected for deeper inspection.
 
+## Baseline and device-state comparison
+
+Distinguish known-good/pre-fault evidence from the session-start snapshot. Summarize normalized differences and zero-difference results, external-path exclusions, reboot outcome, and any `persistent_internal_state` hypothesis. A successful factory reset supports an internal persistent-state relationship but does not alone prove physical storage corruption.
+
 ## Confirmed facts
 
 Record evidence-backed facts with device ID, command ID, parameter key, timestamp, and raw evidence path.

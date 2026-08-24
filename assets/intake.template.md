@@ -40,6 +40,14 @@ Do not equate an action with a cause. Do not ask the user to repeat a completed 
 - Measurements:
 - Every received file has been added to `source/customer-file-index.csv`: **no**
 
+## Baseline evidence
+
+- Known-good or pre-fault snapshot/configuration exists: (`yes`, `no`, or `unknown`)
+- Capture time/timezone and proof it predates the fault:
+- Models, firmware, devices, commands, and fields covered:
+- Source and reliability:
+- If absent, `session_start` snapshot planned before the first diagnostic action: **no**
+
 ## Additional diagnostic files
 
 After requesting the expected evidence, ask: **“Apart from the items already mentioned, do you have any other files or materials that might help diagnose the problem?”** Examples may include configuration exports, complete logs, screenshots/screen recordings, topology diagrams, switch configuration, event timestamps, firmware details, packet captures, or third-party device reports; do not limit the customer to this list.

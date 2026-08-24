@@ -33,7 +33,6 @@ param(
     [ValidateSet("", "power", "audio", "video", "network", "control", "protocol_conflict", "other")]
     [string]$PrimaryCategory = "",
 
-    [ValidateSet("power", "audio", "video", "network", "control", "protocol_conflict", "other")]
     [string[]]$SecondaryCategory,
 
     [ValidateSet("", "low", "medium", "high")]
@@ -96,10 +95,28 @@ if ($schemaVersion -ge 6) {
         }
     }
 }
+if ($schemaVersion -ge 7) {
+    foreach ($relativePath in @("baseline-index.csv", "baseline-comparison.csv")) {
+        $fullPath = Join-Path $resolvedCaseRoot $relativePath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "Required schema v7 case file is missing: $fullPath"
+        }
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
 $customerFiles = if ($schemaVersion -ge 6) {
     @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\customer-file-index.csv"))
+} else {
+    @()
+}
+$baselines = if ($schemaVersion -ge 7) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "baseline-index.csv"))
+} else {
+    @()
+}
+$baselineComparisons = if ($schemaVersion -ge 7) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "baseline-comparison.csv"))
 } else {
     @()
 }
@@ -192,7 +209,19 @@ $primaryCategoryValue = if ($PrimaryCategory) {
     $null
 }
 $secondaryCategoriesValue = if ($PSBoundParameters.ContainsKey("SecondaryCategory")) {
-    @($SecondaryCategory | Select-Object -Unique)
+    $allowedSecondaryCategories = @("power", "audio", "video", "network", "control", "protocol_conflict", "other")
+    $normalizedSecondaryCategories = @(
+        $SecondaryCategory |
+            ForEach-Object { $_ -split "," } |
+            ForEach-Object { $_.Trim().ToLowerInvariant() } |
+            Where-Object { $_ } |
+            Select-Object -Unique
+    )
+    $invalidSecondaryCategories = @($normalizedSecondaryCategories | Where-Object { $_ -notin $allowedSecondaryCategories })
+    if ($invalidSecondaryCategories.Count -gt 0) {
+        throw "SecondaryCategory contains invalid value(s): $($invalidSecondaryCategories -join ', ')"
+    }
+    @($normalizedSecondaryCategories)
 } elseif ($oldCheckpoint.PSObject.Properties.Name -contains "secondary_categories") {
     @($oldCheckpoint.secondary_categories)
 } else {
@@ -274,6 +303,8 @@ $checkpoint = [ordered]@{
     created_at = $oldCheckpoint.created_at
     updated_at = $now
     document_count = $documents.Count
+    baseline_count = $baselines.Count
+    baseline_comparison_count = $baselineComparisons.Count
     command_count = $commands.Count
     cohort_count = $cohorts.Count
     online_device_count = $onlineDevices.Count
@@ -308,11 +339,12 @@ $handoff = @"
 - Last completed record: $(if ($LastCompletedRecord) { $LastCompletedRecord } else { "none recorded" })
 - Next action: $NextAction
 - Documents / commands: $($documents.Count) / $($commands.Count)
+- Baselines / comparisons: $($baselines.Count) / $($baselineComparisons.Count)
 - Cohorts / online devices / selected matrix rows: $($cohorts.Count) / $($onlineDevices.Count) / $($ledger.Count)
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``baseline-index.csv``, ``baseline-comparison.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))
