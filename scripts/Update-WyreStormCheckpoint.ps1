@@ -21,6 +21,9 @@ param(
     [ValidateSet("", "pending", "complete")]
     [string]$IntakeStatus = "",
 
+    [ValidateSet("", "not_started", "complete", "unavailable")]
+    [string]$OfficialResearchStatus = "",
+
     [ValidateSet("", "not_started", "provisional", "confirmed", "inconclusive")]
     [string]$ClassificationStatus = "",
 
@@ -76,6 +79,12 @@ if ($schemaVersion -ge 4) {
         throw "SessionNonce does not match this case. Do not resume a different session's records."
     }
 }
+if ($schemaVersion -ge 5) {
+    $officialResearchPath = Join-Path $resolvedCaseRoot "wyrestorm-official-research.md"
+    if (-not (Test-Path -LiteralPath $officialResearchPath -PathType Leaf)) {
+        throw "Required schema v5 case file is missing: $officialResearchPath"
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
 $commands = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "command-catalog.csv"))
@@ -110,6 +119,25 @@ $intakeCompletedAtValue = if ($IntakeStatus -eq "complete" -and $oldIntakeStatus
     $null
 } elseif ($oldCheckpoint.PSObject.Properties.Name -contains "intake_completed_at") {
     $oldCheckpoint.intake_completed_at
+} else {
+    $null
+}
+$oldOfficialResearchStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "official_research_status" -and $oldCheckpoint.official_research_status) {
+    [string]$oldCheckpoint.official_research_status
+} elseif ($schemaVersion -ge 5) {
+    "not_started"
+} else {
+    "legacy_untracked"
+}
+$officialResearchStatusValue = if ($OfficialResearchStatus) {
+    $OfficialResearchStatus
+} else {
+    $oldOfficialResearchStatus
+}
+$officialResearchUpdatedAtValue = if ($PSBoundParameters.ContainsKey("OfficialResearchStatus")) {
+    $now
+} elseif ($oldCheckpoint.PSObject.Properties.Name -contains "official_research_updated_at") {
+    $oldCheckpoint.official_research_updated_at
 } else {
     $null
 }
@@ -156,6 +184,9 @@ $classificationUpdatedAtValue = if ($classificationWasUpdated) {
 if ($classificationStatusValue -ne "not_started" -and $intakeStatusValue -ne "complete") {
     throw "Complete intake before setting a problem classification."
 }
+if ($schemaVersion -ge 5 -and $classificationStatusValue -ne "not_started" -and $officialResearchStatusValue -notin @("complete", "unavailable")) {
+    throw "Complete targeted WyreStorm official research or explicitly mark it unavailable before setting a problem classification."
+}
 if ($classificationStatusValue -ne "not_started" -and -not $primaryCategoryValue) {
     throw "PrimaryCategory is required when classification has started."
 }
@@ -181,6 +212,8 @@ $checkpoint = [ordered]@{
     status = $CaseStatus
     intake_status = $intakeStatusValue
     intake_completed_at = $intakeCompletedAtValue
+    official_research_status = $officialResearchStatusValue
+    official_research_updated_at = $officialResearchUpdatedAtValue
     classification_status = $classificationStatusValue
     primary_category = $primaryCategoryValue
     secondary_categories = $secondaryCategoriesValue
@@ -216,6 +249,7 @@ $handoff = @"
 - Scan mode: $scanMode
 - Case status: $CaseStatus
 - Intake status: $intakeStatusValue
+- WyreStorm official research status: $officialResearchStatusValue
 - Classification: $classificationStatusValue / $(if ($primaryCategoryValue) { $primaryCategoryValue } else { "none" }) / $(if ($classificationConfidenceValue) { $classificationConfidenceValue } else { "none" }) confidence
 - Secondary categories: $(if ($secondaryCategoriesValue.Count -gt 0) { $secondaryCategoriesValue -join ", " } else { "none" })
 - Last completed record: $(if ($LastCompletedRecord) { $LastCompletedRecord } else { "none recorded" })
@@ -225,7 +259,7 @@ $handoff = @"
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))

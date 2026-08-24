@@ -5,11 +5,12 @@
 - Scan mode: {{SCAN_MODE}}
 - Case status: initialized
 - Intake status: pending
+- WyreStorm official research status: not started
 - Classification: not started
 - Last completed record: none
 - Next action: {{NEXT_ACTION}}
 - Current inventory state: not started
 - Current coverage state: not started
 - Active blockers: endpoint, access, scope, and document applicability must be verified
-- Resume instruction: only after the current conversation supplies the exact CaseRoot and matching session nonce, read this file, `checkpoint.json`, `intake.md`, `user-actions.csv`, `classification.md`, all other CSV ledgers, and the tail of `checkpoint-log.md`
+- Resume instruction: only after the current conversation supplies the exact CaseRoot and matching session nonce, read this file, `checkpoint.json`, `intake.md`, `user-actions.csv`, `wyrestorm-official-research.md`, `classification.md`, all other CSV ledgers, and the tail of `checkpoint-log.md`
 - Last updated: {{UPDATED_AT}}

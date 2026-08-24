@@ -30,6 +30,8 @@ Summarize the important checks, observations, contradictions, and evidence in ch
 
 Summarize any additional customer-provided files that materially influenced the diagnosis and what was learned from them; the temporary copies will be deleted at closure.
 
+Summarize the WyreStorm official sources and model/version-specific facts that materially influenced the diagnosis. Embed the useful fact and exact URL because the temporary official-research file will be deleted at closure. If the official site was unavailable, preserve that limitation and the substitute source used.
+
 ## Root cause
 
 State the confirmed root cause. If the problem is resolved but the root cause remains uncertain, say so and list the strongest supported explanation and exclusions.

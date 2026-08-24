@@ -18,6 +18,10 @@ Summarize the user's original symptom and the relevant ordered rows from `user-a
 
 Report primary and secondary categories, `confirmed` or `inconclusive` status, confidence, supporting and contradicting evidence, excluded alternatives, and any change from the provisional intake classification.
 
+## WyreStorm official research preflight
+
+List only the official sources that materially affected this case. For each, record the exact URL, access time, applicable model/series and firmware/API version, confirmed fact, and diagnostic effect. If official research was unavailable, record the reason and which user-provided documents were used instead. Do not present inference as an official statement.
+
 ## Scope and collection window
 
 Record mode, timezone, start/end timestamps, endpoints, in-scope models/firmware, API profiles/cohorts, document IDs and hashes, and redaction policy.

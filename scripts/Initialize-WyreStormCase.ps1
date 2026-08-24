@@ -93,6 +93,7 @@ $skillRoot = Split-Path -Parent $PSScriptRoot
 $assetRoot = Join-Path $skillRoot "assets"
 $templateMap = @{
     "intake.template.md" = "intake.md"
+    "official-research.template.md" = "wyrestorm-official-research.md"
     "classification.template.md" = "classification.md"
     "findings.template.md" = "findings.md"
     "checkpoint-log.template.md" = "checkpoint-log.md"
@@ -105,12 +106,12 @@ foreach ($entry in $templateMap.GetEnumerator()) {
 
 $now = (Get-Date).ToString("o")
 $nextAction = switch ($ScanMode) {
-    "triage" { "Complete intake and user action history, make a provisional classification, then verify API documents, scope, endpoint, and access" }
-    "deep" { "Complete intake and user action history, make a provisional classification, then define the fault domain and its minimum sufficient command set" }
-    "audit" { "Complete intake and user action history, make a provisional classification, then verify prerequisites and build the complete command catalog" }
+    "triage" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then verify API documents, scope, endpoint, and access" }
+    "deep" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then define the fault domain and its minimum sufficient command set" }
+    "audit" { "Complete intake and user action history, complete targeted WyreStorm official research, make a provisional classification, then verify prerequisites and build the complete command catalog" }
 }
 $checkpoint = [ordered]@{
-    schema_version = 4
+    schema_version = 5
     case_id = $CaseId
     case_root = $resolvedCaseRoot
     session_scope = "current_session_only"
@@ -119,6 +120,8 @@ $checkpoint = [ordered]@{
     status = "initialized"
     intake_status = "pending"
     intake_completed_at = $null
+    official_research_status = "not_started"
+    official_research_updated_at = $null
     classification_status = "not_started"
     primary_category = $null
     secondary_categories = @()
