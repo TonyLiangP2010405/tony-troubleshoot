@@ -32,6 +32,8 @@ Summarize every customer-provided file that materially influenced the diagnosis,
 
 Summarize the WyreStorm official sources and model/version-specific facts that materially influenced the diagnosis. Embed the useful fact and exact URL because the temporary official-research file will be deleted at closure. If the official site was unavailable, preserve that limitation and the substitute source used.
 
+Summarize material local IPAV/ODM evidence and any firmware Web UI-only command that influenced the result, including source locator, firmware, transport, passive read-only basis, and the limit of what was verified. Preserve the decisive hypothesis eliminations and user-performed physical-action/read-only-retest cycle because their temporary ledgers will be deleted.
+
 Summarize the baseline type and provenance, meaningful differences or verified zero-difference scope, and any reboot/factory-reset decision. Preserve the authorization, backup/recovery safeguards, outcome, and the exact limit of what the outcome proves because temporary baseline files will be deleted.
 
 ## Root cause

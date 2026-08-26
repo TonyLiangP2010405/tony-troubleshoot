@@ -18,6 +18,9 @@ param(
 
     [string]$SessionNonce = "",
 
+    [ValidateSet("", "auto", "single_physical", "fleet")]
+    [string]$CaseShape = "",
+
     [ValidateSet("", "pending", "complete")]
     [string]$IntakeStatus = "",
 
@@ -26,6 +29,9 @@ param(
 
     [ValidateSet("", "not_started", "complete", "unavailable")]
     [string]$OfficialResearchStatus = "",
+
+    [ValidateSet("", "not_started", "complete", "partial", "unavailable")]
+    [string]$CommandSourceStatus = "",
 
     [ValidateSet("", "not_started", "provisional", "confirmed", "inconclusive")]
     [string]$ClassificationStatus = "",
@@ -103,6 +109,18 @@ if ($schemaVersion -ge 7) {
         }
     }
 }
+if ($schemaVersion -ge 8) {
+    foreach ($relativePath in @("command-source-audit.csv", "physical-action-ledger.csv", "hypothesis-ledger.csv")) {
+        $fullPath = Join-Path $resolvedCaseRoot $relativePath
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "Required schema v8 case file is missing: $fullPath"
+        }
+    }
+    $firmwareEvidencePath = Join-Path $resolvedCaseRoot "source\firmware-evidence"
+    if (-not (Test-Path -LiteralPath $firmwareEvidencePath -PathType Container)) {
+        throw "Required schema v8 evidence directory is missing: $firmwareEvidencePath"
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
 $customerFiles = if ($schemaVersion -ge 6) {
@@ -120,6 +138,21 @@ $baselineComparisons = if ($schemaVersion -ge 7) {
 } else {
     @()
 }
+$commandSources = if ($schemaVersion -ge 8) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "command-source-audit.csv"))
+} else {
+    @()
+}
+$physicalActionCycles = if ($schemaVersion -ge 8) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "physical-action-ledger.csv"))
+} else {
+    @()
+}
+$hypotheses = if ($schemaVersion -ge 8) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "hypothesis-ledger.csv"))
+} else {
+    @()
+}
 $commands = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "command-catalog.csv"))
 $devices = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "device-inventory.csv"))
 $ledger = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "progress-ledger.csv"))
@@ -130,6 +163,12 @@ $scanMode = if ($oldCheckpoint.PSObject.Properties.Name -contains "scan_mode" -a
 } else {
     "audit"
 }
+$oldCaseShape = if ($oldCheckpoint.PSObject.Properties.Name -contains "case_shape" -and $oldCheckpoint.case_shape) {
+    [string]$oldCheckpoint.case_shape
+} else {
+    "fleet"
+}
+$caseShapeValue = if ($CaseShape) { $CaseShape } else { $oldCaseShape }
 $sessionScope = if ($oldCheckpoint.PSObject.Properties.Name -contains "session_scope" -and $oldCheckpoint.session_scope) {
     [string]$oldCheckpoint.session_scope
 } else {
@@ -193,6 +232,21 @@ $officialResearchUpdatedAtValue = if ($PSBoundParameters.ContainsKey("OfficialRe
 } else {
     $null
 }
+$oldCommandSourceStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "command_source_status" -and $oldCheckpoint.command_source_status) {
+    [string]$oldCheckpoint.command_source_status
+} elseif ($schemaVersion -ge 8) {
+    "not_started"
+} else {
+    "legacy_untracked"
+}
+$commandSourceStatusValue = if ($CommandSourceStatus) { $CommandSourceStatus } else { $oldCommandSourceStatus }
+$commandSourceUpdatedAtValue = if ($PSBoundParameters.ContainsKey("CommandSourceStatus")) {
+    $now
+} elseif ($oldCheckpoint.PSObject.Properties.Name -contains "command_source_updated_at") {
+    $oldCheckpoint.command_source_updated_at
+} else {
+    $null
+}
 
 $classificationStatusValue = if ($ClassificationStatus) {
     $ClassificationStatus
@@ -248,6 +302,9 @@ $classificationUpdatedAtValue = if ($classificationWasUpdated) {
 if ($classificationStatusValue -ne "not_started" -and $intakeStatusValue -ne "complete") {
     throw "Complete intake before setting a problem classification."
 }
+if ($schemaVersion -ge 8 -and $classificationStatusValue -ne "not_started" -and $caseShapeValue -eq "auto") {
+    throw "Resolve CaseShape to single_physical or fleet before setting a problem classification."
+}
 if ($schemaVersion -ge 6 -and $customerFileReviewStatusValue -eq "none_provided" -and $customerFiles.Count -gt 0) {
     throw "Customer files are indexed; CustomerFileReviewStatus cannot be none_provided."
 }
@@ -255,16 +312,23 @@ if ($schemaVersion -ge 6 -and $customerFileReviewStatusValue -eq "complete") {
     if ($customerFiles.Count -eq 0) {
         throw "No customer files are indexed; use CustomerFileReviewStatus none_provided."
     }
-    $unfinishedCustomerFiles = @($customerFiles | Where-Object { $_.review_status -ne "complete" })
+    $unfinishedCustomerFiles = @($customerFiles | Where-Object {
+        $artifactRole = if ($_.PSObject.Properties.Name -contains "artifact_role" -and $_.artifact_role) { $_.artifact_role } else { "diagnostic_evidence" }
+        if ($artifactRole -eq "reference_document") {
+            $_.review_status -notin @("reference_complete", "complete")
+        } else {
+            $_.review_status -ne "complete"
+        }
+    })
     if ($unfinishedCustomerFiles.Count -gt 0) {
-        throw "Every indexed customer file must have review_status=complete before completing customer-file review."
+        throw "Every indexed customer file must satisfy the review status required by its artifact_role before completing customer-file review."
     }
 }
 if ($schemaVersion -ge 6 -and $classificationStatusValue -ne "not_started" -and $customerFileReviewStatusValue -notin @("complete", "none_provided")) {
     throw "Fully review all customer-provided files or record that none were provided before setting a problem classification."
 }
 if ($schemaVersion -ge 5 -and $classificationStatusValue -ne "not_started" -and $officialResearchStatusValue -notin @("complete", "unavailable")) {
-    throw "Complete targeted WyreStorm official research or explicitly mark it unavailable before setting a problem classification."
+    throw "Complete the local-first WyreStorm product-context preflight or explicitly mark it unavailable before setting a problem classification."
 }
 if ($classificationStatusValue -ne "not_started" -and -not $primaryCategoryValue) {
     throw "PrimaryCategory is required when classification has started."
@@ -288,6 +352,7 @@ $checkpoint = [ordered]@{
     session_scope = $sessionScope
     session_nonce = $checkpointSessionNonce
     scan_mode = $scanMode
+    case_shape = $caseShapeValue
     status = $CaseStatus
     intake_status = $intakeStatusValue
     intake_completed_at = $intakeCompletedAtValue
@@ -295,6 +360,8 @@ $checkpoint = [ordered]@{
     customer_file_review_updated_at = $customerFileReviewUpdatedAtValue
     official_research_status = $officialResearchStatusValue
     official_research_updated_at = $officialResearchUpdatedAtValue
+    command_source_status = $commandSourceStatusValue
+    command_source_updated_at = $commandSourceUpdatedAtValue
     classification_status = $classificationStatusValue
     primary_category = $primaryCategoryValue
     secondary_categories = $secondaryCategoriesValue
@@ -303,6 +370,9 @@ $checkpoint = [ordered]@{
     created_at = $oldCheckpoint.created_at
     updated_at = $now
     document_count = $documents.Count
+    command_source_count = $commandSources.Count
+    physical_action_cycle_count = $physicalActionCycles.Count
+    hypothesis_count = $hypotheses.Count
     baseline_count = $baselines.Count
     baseline_comparison_count = $baselineComparisons.Count
     command_count = $commands.Count
@@ -330,21 +400,24 @@ $handoff = @"
 - Session scope: $sessionScope
 - Session nonce: $(if ($checkpointSessionNonce) { $checkpointSessionNonce } else { "legacy-unavailable" })
 - Scan mode: $scanMode
+- Case shape: $caseShapeValue
 - Case status: $CaseStatus
 - Intake status: $intakeStatusValue
 - Customer file review status: $customerFileReviewStatusValue
-- WyreStorm official research status: $officialResearchStatusValue
+- WyreStorm product-context research status: $officialResearchStatusValue
+- Command-source reconciliation status: $commandSourceStatusValue
 - Classification: $classificationStatusValue / $(if ($primaryCategoryValue) { $primaryCategoryValue } else { "none" }) / $(if ($classificationConfidenceValue) { $classificationConfidenceValue } else { "none" }) confidence
 - Secondary categories: $(if ($secondaryCategoriesValue.Count -gt 0) { $secondaryCategoriesValue -join ", " } else { "none" })
 - Last completed record: $(if ($LastCompletedRecord) { $LastCompletedRecord } else { "none recorded" })
 - Next action: $NextAction
 - Documents / commands: $($documents.Count) / $($commands.Count)
 - Baselines / comparisons: $($baselines.Count) / $($baselineComparisons.Count)
+- Command sources / physical cycles / hypotheses: $($commandSources.Count) / $($physicalActionCycles.Count) / $($hypotheses.Count)
 - Cohorts / online devices / selected matrix rows: $($cohorts.Count) / $($onlineDevices.Count) / $($ledger.Count)
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``baseline-index.csv``, ``baseline-comparison.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``baseline-index.csv``, ``baseline-comparison.csv``, ``command-source-audit.csv``, ``physical-action-ledger.csv``, ``hypothesis-ledger.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))

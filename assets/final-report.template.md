@@ -22,9 +22,15 @@ List every received file, its hash, total verifiable scope, scope actually inspe
 
 Report primary and secondary categories, `confirmed` or `inconclusive` status, confidence, supporting and contradicting evidence, excluded alternatives, and any change from the provisional intake classification.
 
-## WyreStorm official research preflight
+## Product-context research preflight
 
-List only the official sources that materially affected this case. For each, record the exact URL, access time, applicable model/series and firmware/API version, confirmed fact, and diagnostic effect. If official research was unavailable, record the reason and which user-provided documents were used instead. Do not present inference as an official statement.
+List only the official sources that materially affected this case. For each, record the exact URL, access time, applicable model/series and firmware/API version, confirmed fact, and diagnostic effect. If official research was unavailable, record the reason and which local or user-provided documents were used instead. Do not present inference as an official statement.
+
+Also list material local `$tony-skill` evidence with source file, locator, document nature, model/version applicability, and diagnostic effect. Keep local engineering/supplier evidence distinct from official confirmation.
+
+## Command-source reconciliation
+
+Summarize static API, local knowledge-base, and same-firmware Web UI command differences. For every firmware-only command used, record firmware/build, exact transport, passive UI call evidence, safety class, replay scope, response evidence, and that cross-transport compatibility was not inferred.
 
 ## Scope and collection window
 
@@ -39,6 +45,8 @@ Summarize devices and link each item to discovery evidence.
 ## Findings
 
 Summarize confirmed facts first, then interpretations, with raw evidence paths. For every deep-dive device, include the anomaly or symptom that selected it.
+
+Include the ranked hypothesis table with supported, weakened, rejected, confirmed, and blocked candidates. For `single_physical`, summarize each user-performed physical action followed by the analyst's read-only retest.
 
 ## Baseline and device intrinsic state
 

@@ -9,7 +9,7 @@ Use category IDs from `references/troubleshooting-taxonomy.md` in the Skill. Cla
 - Primary category:
 - Secondary categories:
 - Confidence: (`low`, `medium`, or `high`)
-- Diagnostic dimensions: (`visible_parameter_state`, `volatile_runtime_state`, `persistent_internal_state`, `external_path`, or other evidence-based dimensions)
+- Diagnostic dimensions: (`visible_parameter_state`, `firmware_exposed_parameter_state`, `volatile_runtime_state`, `persistent_internal_state`, `external_path`, or other evidence-based dimensions)
 
 ## Basis
 

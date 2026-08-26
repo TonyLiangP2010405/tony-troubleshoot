@@ -1,6 +1,8 @@
-# WyreStorm official research preflight
+# WyreStorm product-context research preflight
 
 - Status: **not_started** (`complete` or `unavailable` before initial classification)
+- Local Tony knowledge-base status: **not_started** (`complete`, `unavailable`, or `no_match`)
+- Official website status: **not_started** (`complete`, `unavailable`, or `not_applicable_oem`)
 - Started at and timezone:
 - Completed/marked unavailable at and timezone:
 - Exact in-scope models, hardware revisions, series, and firmware/API versions:
@@ -17,6 +19,16 @@ For each source record:
 - Confirmed facts:
 - Inference, if any:
 - Diagnostic impact:
+
+## Local IPAV / ODM sources
+
+For each `$tony-skill` result record:
+
+- Source file and locator:
+- Document nature (`published`, `engineering`, `supplier`, `draft`, or `unknown`):
+- Applicable model/firmware:
+- Exact excerpt or accurate evidence summary:
+- Diagnostic impact and confidence:
 
 ## Model-specific checks
 

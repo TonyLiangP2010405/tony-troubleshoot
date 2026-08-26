@@ -8,13 +8,23 @@ Summarize the symptom in the user's words. Reference the relevant ordered rows i
 
 Record the current primary and secondary categories, status, confidence, supporting evidence, contradictions, exclusions, and revision reason from `classification.md`.
 
+## Ranked hypotheses
+
+Summarize active rows from `hypothesis-ledger.csv`:
+
+| Rank | Hypothesis | Category / dimension | Status | Supporting evidence | Contradicting evidence | Next smallest discriminator |
+|---|---|---|---|---|---|---|
+| 1 |  |  | active |  |  |  |
+
+Update, weaken, reject, or confirm existing hypotheses after each physical-action/read-only-retest cycle; do not retain duplicate wording as separate candidates.
+
 ## Customer-file evidence
 
 Summarize the complete customer-file inventory, verified review scope, key facts with exact locations, contradictions, unreadable portions, and how the files changed or constrained the diagnosis. Do not cite a search hit without its surrounding context.
 
 ## Scan mode and selection rationale
 
-Record the active mode, fleet-wide core sweep, cohort definitions, and why each device or problem domain was selected for deeper inspection.
+Record the active mode and case shape. For `fleet`, include core sweep and cohorts. For `single_physical`, state why cohort/matrix work was skipped and summarize the user-action/read-only-retest cycles.
 
 ## Baseline and device-state comparison
 

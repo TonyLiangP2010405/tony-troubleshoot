@@ -39,6 +39,7 @@ Do not equate an action with a cause. Do not ask the user to repeat a completed 
 - Indicator lights/error messages:
 - Measurements:
 - Every received file has been added to `source/customer-file-index.csv`: **no**
+- Every received file has an artifact role (`reference_document`, `diagnostic_evidence`, or `mixed`): **no**
 
 ## Baseline evidence
 
@@ -73,3 +74,10 @@ After requesting the expected evidence, ask: **“Apart from the items already m
 - High-impact unknowns carried forward:
 - Additional-files question completed: **no**
 - `checkpoint.json` updated to `intake_status=complete`: **no**
+
+## Case shape
+
+- API-capable devices:
+- Physical/no-API accessories (dongles, cables, displays, pair ports):
+- Selected shape: (`single_physical` or `fleet`)
+- Reason cohort/fleet work applies or is intentionally skipped:

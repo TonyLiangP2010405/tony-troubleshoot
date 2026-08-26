@@ -13,6 +13,7 @@ Create one subsection per row in `source/customer-file-index.csv`.
 
 - SHA-256 and preserved path:
 - Customer description and expected relevance:
+- Artifact role: (`reference_document`, `diagnostic_evidence`, or `mixed`)
 - Format, size, and readable/encrypted/damaged status:
 - Verifiable total scope (pages/slides/sheets/rows/time range/frames/internal files):
 - Scope actually inspected and method used:
@@ -20,7 +21,7 @@ Create one subsection per row in `source/customer-file-index.csv`.
 - Key facts with exact page/sheet/cell/line/timestamp/frame location:
 - Contradictions and negative evidence:
 - Diagnostic impact:
-- Review status: **pending**
+- Review status: **pending** (`reference_complete` is valid only for a reference document)
 
 ## Cross-file reconciliation
 
@@ -31,8 +32,8 @@ Create one subsection per row in `source/customer-file-index.csv`.
 
 ## Completion gate
 
-- Every currently provided relevant file is indexed: **no**
-- Full verifiable scope checked or limitation documented: **no**
+- Every currently provided file is indexed with an artifact role: **no**
+- Reference documents have applicability/relevant-section review; diagnostic evidence has full verifiable-scope review: **no**
 - Key search/parse hits were read in context: **no**
 - High-impact contradictions were resolved or carried as explicit blockers: **no**
 - Newly added/replaced files reset this review to `pending`: **acknowledged**
