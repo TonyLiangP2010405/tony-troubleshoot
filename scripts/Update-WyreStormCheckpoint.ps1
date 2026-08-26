@@ -24,6 +24,9 @@ param(
     [ValidateSet("", "pending", "complete")]
     [string]$IntakeStatus = "",
 
+    [ValidateSet("", "not_started", "ready", "partial", "unavailable", "not_supported", "user_declined")]
+    [string]$WebUiAccessStatus = "",
+
     [ValidateSet("", "pending", "complete", "none_provided", "blocked")]
     [string]$CustomerFileReviewStatus = "",
 
@@ -121,6 +124,12 @@ if ($schemaVersion -ge 8) {
         throw "Required schema v8 evidence directory is missing: $firmwareEvidencePath"
     }
 }
+if ($schemaVersion -ge 9) {
+    $webUiSessionPath = Join-Path $resolvedCaseRoot "web-ui-session-ledger.csv"
+    if (-not (Test-Path -LiteralPath $webUiSessionPath -PathType Leaf)) {
+        throw "Required schema v9 case file is missing: $webUiSessionPath"
+    }
+}
 
 $documents = @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "source\api-doc-index.csv"))
 $customerFiles = if ($schemaVersion -ge 6) {
@@ -150,6 +159,11 @@ $physicalActionCycles = if ($schemaVersion -ge 8) {
 }
 $hypotheses = if ($schemaVersion -ge 8) {
     @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "hypothesis-ledger.csv"))
+} else {
+    @()
+}
+$webUiSessions = if ($schemaVersion -ge 9) {
+    @(Import-Csv -LiteralPath (Join-Path $resolvedCaseRoot "web-ui-session-ledger.csv"))
 } else {
     @()
 }
@@ -232,6 +246,21 @@ $officialResearchUpdatedAtValue = if ($PSBoundParameters.ContainsKey("OfficialRe
 } else {
     $null
 }
+$oldWebUiAccessStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "web_ui_access_status" -and $oldCheckpoint.web_ui_access_status) {
+    [string]$oldCheckpoint.web_ui_access_status
+} elseif ($schemaVersion -ge 9) {
+    "not_started"
+} else {
+    "legacy_untracked"
+}
+$webUiAccessStatusValue = if ($WebUiAccessStatus) { $WebUiAccessStatus } else { $oldWebUiAccessStatus }
+$webUiAccessUpdatedAtValue = if ($PSBoundParameters.ContainsKey("WebUiAccessStatus")) {
+    $now
+} elseif ($oldCheckpoint.PSObject.Properties.Name -contains "web_ui_access_updated_at") {
+    $oldCheckpoint.web_ui_access_updated_at
+} else {
+    $null
+}
 $oldCommandSourceStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "command_source_status" -and $oldCheckpoint.command_source_status) {
     [string]$oldCheckpoint.command_source_status
 } elseif ($schemaVersion -ge 8) {
@@ -302,6 +331,20 @@ $classificationUpdatedAtValue = if ($classificationWasUpdated) {
 if ($classificationStatusValue -ne "not_started" -and $intakeStatusValue -ne "complete") {
     throw "Complete intake before setting a problem classification."
 }
+if ($schemaVersion -ge 9 -and $classificationStatusValue -ne "not_started" -and $webUiAccessStatusValue -eq "not_started") {
+    throw "At case start, ask the user to open and log in to the relevant Web UI, then record WebUiAccessStatus before setting a problem classification."
+}
+if ($schemaVersion -ge 9 -and $webUiAccessStatusValue -eq "ready") {
+    $readyWebUiSessions = @($webUiSessions | Where-Object {
+        $_.user_opened -match "^(?i:yes|true|1)$" -and
+        $_.user_login_confirmed -match "^(?i:yes|true|1)$" -and
+        $_.readonly_consent -match "^(?i:yes|true|1)$" -and
+        $_.session_status -match "^(?i:ready|active)$"
+    })
+    if ($readyWebUiSessions.Count -eq 0) {
+        throw "WebUiAccessStatus ready requires at least one ledger row confirming user-opened, logged-in, read-only consent, and an active/ready session."
+    }
+}
 if ($schemaVersion -ge 8 -and $classificationStatusValue -ne "not_started" -and $caseShapeValue -eq "auto") {
     throw "Resolve CaseShape to single_physical or fleet before setting a problem classification."
 }
@@ -356,6 +399,8 @@ $checkpoint = [ordered]@{
     status = $CaseStatus
     intake_status = $intakeStatusValue
     intake_completed_at = $intakeCompletedAtValue
+    web_ui_access_status = $webUiAccessStatusValue
+    web_ui_access_updated_at = $webUiAccessUpdatedAtValue
     customer_file_review_status = $customerFileReviewStatusValue
     customer_file_review_updated_at = $customerFileReviewUpdatedAtValue
     official_research_status = $officialResearchStatusValue
@@ -370,6 +415,7 @@ $checkpoint = [ordered]@{
     created_at = $oldCheckpoint.created_at
     updated_at = $now
     document_count = $documents.Count
+    web_ui_session_count = $webUiSessions.Count
     command_source_count = $commandSources.Count
     physical_action_cycle_count = $physicalActionCycles.Count
     hypothesis_count = $hypotheses.Count
@@ -403,6 +449,7 @@ $handoff = @"
 - Case shape: $caseShapeValue
 - Case status: $CaseStatus
 - Intake status: $intakeStatusValue
+- Web UI access status: $webUiAccessStatusValue
 - Customer file review status: $customerFileReviewStatusValue
 - WyreStorm product-context research status: $officialResearchStatusValue
 - Command-source reconciliation status: $commandSourceStatusValue
@@ -412,12 +459,12 @@ $handoff = @"
 - Next action: $NextAction
 - Documents / commands: $($documents.Count) / $($commands.Count)
 - Baselines / comparisons: $($baselines.Count) / $($baselineComparisons.Count)
-- Command sources / physical cycles / hypotheses: $($commandSources.Count) / $($physicalActionCycles.Count) / $($hypotheses.Count)
+- Web UI sessions / command sources / physical cycles / hypotheses: $($webUiSessions.Count) / $($commandSources.Count) / $($physicalActionCycles.Count) / $($hypotheses.Count)
 - Cohorts / online devices / selected matrix rows: $($cohorts.Count) / $($onlineDevices.Count) / $($ledger.Count)
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)
 - Active blockers: $ActiveBlockers
-- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``baseline-index.csv``, ``baseline-comparison.csv``, ``command-source-audit.csv``, ``physical-action-ledger.csv``, ``hypothesis-ledger.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
+- Resume instruction: only within the same conversation and with the exact CaseRoot and matching session nonce, read this file, ``checkpoint.json``, ``intake.md``, ``user-actions.csv``, ``web-ui-session-ledger.csv``, ``source/customer-file-index.csv``, ``customer-file-review.md``, ``baseline-index.csv``, ``baseline-comparison.csv``, ``command-source-audit.csv``, ``physical-action-ledger.csv``, ``hypothesis-ledger.csv``, ``wyrestorm-official-research.md``, ``classification.md``, all other CSV ledgers, and the tail of ``checkpoint-log.md``
 - Last updated: $now
 "@
 $handoffTemp = Join-Path $resolvedCaseRoot ("session-handoff.md.tmp-" + [guid]::NewGuid().ToString("N"))

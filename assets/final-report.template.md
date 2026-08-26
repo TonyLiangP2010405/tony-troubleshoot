@@ -32,6 +32,10 @@ Also list material local `$tony-skill` evidence with source file, locator, docum
 
 Summarize static API, local knowledge-base, and same-firmware Web UI command differences. For every firmware-only command used, record firmware/build, exact transport, passive UI call evidence, safety class, replay scope, response evidence, and that cross-transport compatibility was not inferred.
 
+## Web UI session usage
+
+List the relevant device pages the user opened and logged in to, the read-only consent and agent access mode, device-identity verification, session interruptions, and Web-only API calls. State that authentication secrets stayed inside the user's browser session and that no Web-only API was rerouted through Telnet/SSH.
+
 ## Scope and collection window
 
 Record mode, timezone, start/end timestamps, endpoints, in-scope models/firmware, API profiles/cohorts, document IDs and hashes, and redaction policy.

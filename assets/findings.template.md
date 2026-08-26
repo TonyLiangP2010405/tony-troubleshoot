@@ -22,6 +22,10 @@ Update, weaken, reject, or confirm existing hypotheses after each physical-actio
 
 Summarize the complete customer-file inventory, verified review scope, key facts with exact locations, contradictions, unreadable portions, and how the files changed or constrained the diagnosis. Do not cite a search hit without its surrounding context.
 
+## Web UI session and Web-only API evidence
+
+Summarize which relevant pages the user opened and logged in to, whether the agent used an existing authenticated page or the user operated it, how device identity was verified, and every Web-only API used. Record same-origin/session/transport basis and redacted evidence; never include credentials, Cookie, authorization headers, CSRF tokens, or handshake secrets.
+
 ## Scan mode and selection rationale
 
 Record the active mode and case shape. For `fleet`, include core sweep and cohorts. For `single_physical`, state why cohort/matrix work was skipped and summarize the user-action/read-only-retest cycles.

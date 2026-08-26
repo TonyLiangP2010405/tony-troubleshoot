@@ -26,6 +26,20 @@
 - Model and firmware/API versions:
 - Recent environmental events (power, lightning, construction, heat, network change):
 
+## Web UI readiness at case start
+
+Ask the user to open each currently relevant device/controller Web UI and log in themselves. Do not ask for or record credentials. The user should confirm whether the agent may use the already-authenticated page for read-only diagnosis.
+
+- Relevant device/controller and exact Web UI URL:
+- User opened the page: **no**
+- User completed login themselves: **no**
+- User granted agent read-only use of the current page: **no**
+- Agent browser access mode: (`existing_authenticated_page`, `user_operated_only`, `unavailable`, or `not_supported`)
+- Page identity verified against device/address/model/serial: **no**
+- Firmware and Web UI build shown:
+- `web-ui-session-ledger.csv` updated without credentials or session secrets: **no**
+- Overall `web_ui_access_status`: **not_started** (`ready`, `partial`, `unavailable`, `not_supported`, or `user_declined` before classification)
+
 ## What the user already did
 
 The ordered source of truth is `user-actions.csv`. Record every known click, setting change, cable move/reseat/swap/replacement, power cycle, restart/reset, firmware/config change, source/display change, and network change. For each action capture its target, before/after state, observed result, whether it was reverted, and evidence.
@@ -74,6 +88,7 @@ After requesting the expected evidence, ask: **“Apart from the items already m
 - High-impact unknowns carried forward:
 - Additional-files question completed: **no**
 - `checkpoint.json` updated to `intake_status=complete`: **no**
+- `checkpoint.json` updated with a non-`not_started` `web_ui_access_status`: **no**
 
 ## Case shape
 

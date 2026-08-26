@@ -1,6 +1,6 @@
 ---
 name: tony-troubleshoot
-description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做证据化故障排查；结合客户操作与文件、本地 tony-skill 知识库、官网/API 文档和同固件 Web UI 的受控只读实现证据，按七类问题及参数/内部状态维度定位。用于黑屏、网络、控制、配对、无线、Web UI 独有设置和机群巡检；检查点只在同一会话续查，结案仅保留总结。"
+description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做证据化故障排查；启动时先让用户打开并登录相关设备 Web UI，在用户现有认证会话中安全调用只存在于 Web 的只读 API，再结合客户操作与文件、本地 tony-skill、官网/API 文档按七类问题及参数/内部状态维度定位。用于黑屏、网络、控制、配对、无线、Web UI 独有设置和机群巡检；检查点只在同一会话续查，结案仅保留总结。"
 ---
 
 # WyreStorm 分层排障与按需全量审计
@@ -25,6 +25,19 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 如果用户中途改变模式，记录变更原因；保留已取得的有效证据，仅扩展或收缩尚未执行的范围。
 
+## 启动时打开并登录相关设备 Web UI（强制询问）
+
+初始化案件后，在产品研究、分类或任何 Telnet/API 查询之前，先让用户在自己的浏览器中打开故障链路相关设备的准确 Web UI 并自行登录。用户不要把用户名、密码、Cookie 或令牌发给 agent；登录成功后只需确认：“页面已打开并登录，允许 agent 使用当前会话做只读诊断”。
+
+- `single_physical` 至少准备故障主机的 Web UI；`fleet` 先准备受影响设备和控制器，后续只在某台设备需要深入时再打开该设备页面，避免要求用户一次打开大量无关页面。
+- agent 只有在当前环境具备浏览器控制能力、能够使用用户已经登录的页面且用户已确认允许只读诊断时，才可接管该页面。先从页面核对地址、型号、序列号或设备名，防止连错机器。
+- 在 `web-ui-session-ledger.csv` 逐设备记录 Web UI 地址、用户已打开/登录、agent 访问方式、页面显示的设备身份、固件/UI build、会话状态和时间；URL 必须移除 userinfo、临时签名和含令牌的查询参数，不得记录任何凭据、Cookie、授权头、CSRF token 或 WebSocket 握手秘密。
+- 通过 Web UI 调用的命令必须留在该页面的同源认证会话和实际 Web 传输中。只存在于 Web/WebSocket 的 API 就走 Web，不得因为字符串相同而改从 Telnet、SSH 或其它设备会话调用。
+- 只有适用文档证明只读，或满足下述 `firmware_observed_readonly` 证据条件的 Web API 才可自动调用。任何 Apply、Save、Pair、SET、路由切换、重启、复位或升级仍需对准确设备和动作逐项授权。
+- Web UI 不支持、无法访问、浏览器工具不能接管现有会话或用户不愿授权时，分别记录 `not_supported|unavailable|partial|user_declined`，继续其它安全证据路径；不得索要登录凭据来绕过限制。
+
+分类前必须把 `web_ui_access_status` 从 `not_started` 更新为 `ready|partial|unavailable|not_supported|user_declined`。该门禁证明 agent 已在开始阶段询问和评估 Web UI，不代表所有设备都必须可登录。
+
 ## 强制前置条件
 
 连接设备前必须获得或明确标记为未知：
@@ -35,10 +48,11 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 4. 故障发生前的已知正常基线是否存在，包括配置导出、全量只读快照、型号/固件清单、拓扑和采集时间；不存在时明确记录，不能把故障后的首次采集冒充故障前基线。
 5. 在列出常规所需文件后，再开放式询问客户：“除此之外，您是否还有任何可能帮助诊断问题的文件或资料可以提供？”可提示但不限于配置导出、完整日志、截图/录屏、拓扑图、交换机配置、事件时间点、固件信息、抓包或第三方设备报告。
 6. 范围内每种型号、系列及固件/API 版本可用的命令来源：静态 API 文档、本地 IPAV/ODM 资料，以及同固件 Web UI 可被动验证的实现证据；缺少哪一类要明确记录。
-7. 管理端点或发现起始地址、连接方式，以及读取所需的凭据或已认证会话。
-8. 本地案件目录和明确的设备/网络范围。
+7. 相关设备的 Web UI 地址；用户是否已自行打开并登录，以及是否允许 agent 使用当前页面做只读诊断。
+8. 其它管理端点或发现起始地址、连接方式，以及非 Web 读取所需的已认证会话。
+9. 本地案件目录和明确的设备/网络范围。
 
-对 1–5 逐项追问，但允许用户回答“不知道/不确定/记不清/没有基线/没有其它文件”。把额外资料问题记录为 `provided`、`none`、`unknown` 或 `will_provide_later`；客户确认没有额外文件时不得反复追问，也不阻塞排查。接收前提醒客户移除或遮盖密码、令牌、私钥、会话 Cookie 和无关个人信息。当必填项已有值或被显式标记为未知，且高影响歧义已追问一次，即可把 `intake_status` 标为 `complete`；不要为了无法获得的信息无限阻塞。对 6–8 的缺口按安全规则处理，不能因为 intake 完成就绕过 API 文档和访问边界。
+对 1–5 逐项追问，但允许用户回答“不知道/不确定/记不清/没有基线/没有其它文件”。把额外资料问题记录为 `provided`、`none`、`unknown` 或 `will_provide_later`；客户确认没有额外文件时不得反复追问，也不阻塞排查。接收前提醒客户移除或遮盖密码、令牌、私钥、会话 Cookie 和无关个人信息。当必填项已有值或被显式标记为未知，且高影响歧义已追问一次，即可把 `intake_status` 标为 `complete`；不要为了无法获得的信息无限阻塞。对 6–9 的缺口按安全规则处理，不能因为 intake 完成就绕过命令来源和访问边界。
 
 不得凭记忆猜测命令、凭字符串名称推断安全性或拿其他型号手册代替。静态文档不是唯一命令来源，但每条可执行命令都必须有可复核的只读依据：适用文档，或同型号同固件官方 Web UI 在同一传输上被动观察到的状态读取行为。证据不足时登记阻塞；`audit` 模式存在命令来源缺口时不得声称全量完成。
 
@@ -92,6 +106,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 - SPA 中出现一个字符串或枚举，只能标为 `enumerated_unverified`。只有同型号同固件 UI 在同一传输上自动发出该命令来读取状态、且请求和响应已保存，才可标为 `firmware_observed_readonly`。
 - `firmware_observed_readonly` 只允许在相同固件、相同传输、相同参数形态下做最小重放；WebSocket 证据不能自动授权 Telnet/SSH/HTTP 重放。异常响应或副作用迹象立即停止。
 - 固件 UI 中观察到的 SET/Apply/Save 仍是写操作；必须说明目标、前后值、影响和回退，并对具体动作另行授权。
+- agent 可以在用户已登录且明确允许只读诊断的页面会话中调用 Web-only 只读 API；调用前后把设备身份、同源页面、传输、请求形态和脱敏响应证据关联到 `web-ui-session-ledger.csv`、`command-source-audit.csv` 与 `progress-ledger.csv`。
 
 ## 分类门
 
@@ -176,6 +191,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 - `source/customer-files/`、`source/customer-file-index.csv`、`customer-file-review.md`：客户文件临时副本、完整清单、阅读覆盖、定位证据、矛盾和无法读取部分。
 - `source/baselines/`、`baseline-index.csv`、`baseline-comparison.csv`：不同时间语义的快照、来源可靠性和标准化字段差异；会话开始快照不得标成故障前基线。
 - `source/firmware-evidence/`、`command-source-audit.csv`：静态文档、本地资料和同固件 Web UI 命令集差异及只读依据。
+- `web-ui-session-ledger.csv`：相关设备 Web UI 的打开/登录确认、agent 访问方式、设备身份核对、同源传输、固件/UI build 和会话状态；不含任何凭据或会话秘密。
 - `intake.md`、`user-actions.csv`：用户症状、现场信息、未知项和按顺序记录的已执行操作。
 - `wyrestorm-official-research.md`：当前型号/固件/症状的本地 IPAV/ODM 知识库与官网补充预检状态、来源、适用性、事实和诊断影响。
 - `classification.md`：主/次分类、置信度、支持证据、反证、变更历史和分类状态。
@@ -195,8 +211,8 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 仅在当前对话发生模型切换、compacting 或中断恢复后：
 
 1. 从当前对话上下文取得准确 `CaseRoot` 和 `session_nonce`；不得通过目录搜索恢复它们。
-2. 读取该目录的 `session-handoff.md`、`checkpoint.json`、`intake.md`、`user-actions.csv`、`source/customer-file-index.csv`、`customer-file-review.md`、`baseline-index.csv`、`baseline-comparison.csv`、`command-source-audit.csv`、`physical-action-ledger.csv`、`hypothesis-ledger.csv`、`wyrestorm-official-research.md`、`classification.md`、文档索引、各 CSV 和 `checkpoint-log.md` 末尾。
-3. 核对 checkpoint 中的 nonce 与当前会话保存的值一致，再核对 intake、客户文件清单及阅读覆盖、产品资料预检、命令来源核对、分类、`scan_mode`、`case_shape`、目标范围、文档指纹、设备身份和 API 配置；不一致时停止续查。
+2. 读取该目录的 `session-handoff.md`、`checkpoint.json`、`intake.md`、`user-actions.csv`、`web-ui-session-ledger.csv`、`source/customer-file-index.csv`、`customer-file-review.md`、`baseline-index.csv`、`baseline-comparison.csv`、`command-source-audit.csv`、`physical-action-ledger.csv`、`hypothesis-ledger.csv`、`wyrestorm-official-research.md`、`classification.md`、文档索引、各 CSV 和 `checkpoint-log.md` 末尾。
+3. 核对 checkpoint 中的 nonce 与当前会话保存的值一致，再核对 intake、Web UI 会话仍属于用户当前打开的同一设备页面、客户文件清单及阅读覆盖、产品资料预检、命令来源核对、分类、`scan_mode`、`case_shape`、目标范围、文档指纹、设备身份和 API 配置；不一致时停止续查。compacting 后不得假设旧 Cookie/会话仍有效，调用前重新核对页面身份和登录状态。
 4. 若用户补充了操作、文件或现场发生变化，先更新时间线或文件审阅状态，再重新评估分类和已完成证据的有效性。
 5. 将 `in_progress` 行与原始尝试文件核对；证据和当前模式要求的字段检查均完成才改为 `completed`，否则保留旧尝试并继续。
 6. 选择当前模式下第一个适用且未完成的记录，不重复仍有效的已完成记录。
@@ -207,7 +223,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ### `triage`：默认快速排障
 
-1. 完成 intake、按角色审阅文件、本地优先的产品预检和命令来源核对，登记已有基线并建立有排序的假设清单。
+1. 先让用户打开并登录相关 Web UI，确认 agent 是否可使用当前会话做只读诊断；再完成 intake、按角色审阅文件、本地优先的产品预检和命令来源核对，登记已有基线并建立有排序的假设清单。
 2. `single_physical` 只查询主机身份和症状相关状态；无 API 外设进入“用户动作—观察—只读复测”循环，不建立 cohort 或全员 core 矩阵。
 3. `fleet` 才发现设备、形成 API 配置组，对所有在线设备运行核心健康普查。
 4. 保存首次动作前的 `session_start` 快照；根据假设、用户时间线和异常信号只加载需要的诊断命令。
@@ -215,11 +231,11 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ### `deep`：定向深挖
 
-完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类后，围绕指定设备或问题域建立最小充分命令集。沿依赖链收集支持与反证，避免无关端口、页面和参数组合。若发现故障可能跨设备传播，可把受影响链路设备加入范围，但要记录加入原因。
+先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类。围绕指定设备或问题域建立最小充分命令集，优先使用该设备同源 Web 会话中的 Web-only 只读 API；沿依赖链收集支持与反证，避免无关端口、页面和参数组合。若发现故障可能跨设备传播，可把受影响链路设备加入范围，但要记录加入原因。
 
 ### `audit`：全量覆盖
 
-完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类；分类不缩减审计范围，但用于报告问题上下文。完整读取适用命令资料并编制每条命令。对每台适用在线设备穷尽所有有限参数、页码和游标，保存全部响应并审计每个预期字段。汇总命令只有在适用来源明确证明与详细命令等价时才能替代详细查询。
+先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类；分类不缩减审计范围，但用于报告问题上下文。完整读取适用命令资料并编制每条命令。对每台适用在线设备穷尽所有有限参数、页码和游标，保存全部响应并审计每个预期字段。汇总命令只有在适用来源明确证明与详细命令等价时才能替代详细查询。
 
 收尾时重复发现，直到连续两次没有未扫描的新在线设备。存在任何 `not_started`、`in_progress`、失败、阻塞或字段缺口时，结果必须标记为部分完成/未完成。
 
@@ -235,7 +251,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ## 诊断完成与结案清理
 
-`findings.md` 先写有证据路径的确认事实，再写诊断判断和反证。`final-report.md` 必须包含用户已执行操作摘要、客户文件清单与阅读覆盖证明、文件中的关键事实/矛盾/未读部分及其影响、与结论有关的本地知识库/官网/固件命令来源及其适用性、最终主/次分类及置信度、分类变化原因、模式、`case_shape`、范围、时间和时区、文档/版本指纹、设备与组别数量、执行/失败/阻塞统计、异常设备及深入理由、脱敏情况和未解决缺口。
+`findings.md` 先写有证据路径的确认事实，再写诊断判断和反证。`final-report.md` 必须包含用户已执行操作摘要、Web UI 打开/登录与只读会话使用情况、使用过的 Web-only API 及其同源/同传输依据、客户文件清单与阅读覆盖证明、与结论有关的本地知识库/官网/固件命令来源及其适用性、最终分类与置信度、模式、`case_shape`、范围、文档/版本指纹、执行/失败/阻塞统计、脱敏情况和未解决缺口。
 
 - `triage` 完成表示核心普查和所选异常的诊断范围完成，不表示所有 API 字段已采集。
 - `deep` 完成表示指定问题域已有充分证据或明确阻塞，不表示设备全量覆盖。

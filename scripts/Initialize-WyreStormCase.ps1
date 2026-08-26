@@ -121,6 +121,7 @@ Set-Content -LiteralPath (Join-Path $workingCaseRoot "baseline-comparison.csv") 
 $csvHeaders = @{
     "command-catalog.csv" = "command_id,api_profile_id,document_id,doc_location,source_authority,source_evidence,observed_transport,readonly_basis,verification_status,raw_command,transport,scope,classification,scan_tier,cost_class,applicability,parameters,parameter_strategy,response_fields,pagination,mutating,requires_approval,notes"
     "command-source-audit.csv" = "command_id,raw_command,model,firmware,transport,static_document_status,local_kb_evidence,ui_enum_location,passive_call_evidence,readonly_basis,verification_status,allowed_scope,notes"
+    "web-ui-session-ledger.csv" = "session_id,device_id,web_ui_url,user_opened,user_login_confirmed,readonly_consent,agent_access_mode,page_identity,firmware,ui_build,origin,transport,session_status,last_verified_at,evidence_path,notes"
     "device-inventory.csv" = "device_id,parent_device_id,interface_type,cohort_id,api_profile_id,capability_signature,ip_or_endpoint,model,serial,firmware,online_status,first_seen,last_seen,discovery_command,discovery_evidence,scan_status,notes"
     "progress-ledger.csv" = "record_id,scan_mode,scan_tier,cohort_id,selection_reason,device_id,command_id,parameter_key,status,attempt,started_at,completed_at,raw_path,result_summary,error,doc_reference"
     "physical-action-ledger.csv" = "cycle_id,hypothesis_id,target,requested_action,observation_requested,safety_impact,user_authorized,user_performed_at,user_observation,readonly_retest_command,retest_evidence,result,status,updated_at,notes"
@@ -150,12 +151,12 @@ foreach ($entry in $templateMap.GetEnumerator()) {
 
 $now = (Get-Date).ToString("o")
 $nextAction = switch ($ScanMode) {
-    "triage" { "Complete intake, classify file roles, query local IPAV knowledge first, resolve case shape, reconcile static and firmware command sources, then make a provisional classification" }
-    "deep" { "Complete intake, classify file roles, query local IPAV knowledge first, resolve case shape, reconcile command sources, then define the fault domain and its minimum sufficient command set" }
-    "audit" { "Complete intake, classify file roles, query local IPAV knowledge first, resolve case shape, reconcile command sources, then verify prerequisites and build the complete command catalog" }
+    "triage" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, case shape, file roles, command-source reconciliation, and provisional classification" }
+    "deep" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, command-source reconciliation, and fault-domain definition" }
+    "audit" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, command-source reconciliation, prerequisites, and the complete command catalog" }
 }
 $checkpoint = [ordered]@{
-    schema_version = 8
+    schema_version = 9
     case_id = $CaseId
     case_root = $resolvedCaseRoot
     session_scope = "current_session_only"
@@ -165,6 +166,8 @@ $checkpoint = [ordered]@{
     status = "initialized"
     intake_status = "pending"
     intake_completed_at = $null
+    web_ui_access_status = "not_started"
+    web_ui_access_updated_at = $null
     customer_file_review_status = "pending"
     customer_file_review_updated_at = $null
     official_research_status = "not_started"
@@ -179,6 +182,7 @@ $checkpoint = [ordered]@{
     created_at = $now
     updated_at = $now
     document_count = $docRows.Count
+    web_ui_session_count = 0
     command_source_count = 0
     physical_action_cycle_count = 0
     hypothesis_count = 0
