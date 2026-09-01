@@ -1,4 +1,4 @@
 interface:
   display_name: "Tony Troubleshoot"
-  short_description: "先登录设备 Web UI，再证据化排查 WyreStorm 故障"
-  default_prompt: "使用 $tony-troubleshoot，先让我打开并登录相关机器的 Web UI，使用当前页面会话检查 Web-only 只读 API，再完整记录我点过、改过和动过的线并按故障类别分层排查。"
+  short_description: "资料审阅后多选候选问题，再排查 WyreStorm 故障"
+  default_prompt: "使用 $tony-troubleshoot，先让我登录相关机器的 Web UI并完整审阅资料；形成候选问题后用多选方式让我决定先排查哪些，再按安全边界执行诊断。"

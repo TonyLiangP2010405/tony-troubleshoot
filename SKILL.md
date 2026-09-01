@@ -1,6 +1,6 @@
 ---
 name: tony-troubleshoot
-description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做证据化故障排查；启动时先让用户打开并登录相关设备 Web UI，在用户现有认证会话中安全调用只存在于 Web 的只读 API，再结合客户操作与文件、本地 tony-skill、官网/API 文档按七类问题及参数/内部状态维度定位。用于黑屏、网络、控制、配对、无线、Web UI 独有设置和机群巡检；检查点只在同一会话续查，结案仅保留总结。"
+description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做证据化故障排查；启动时先让用户打开并登录相关设备 Web UI，在现有认证会话中安全调用 Web-only 只读 API；完成询问和资料审阅后列出全部合理候选问题，让用户多选优先排查项，再按七类问题及参数/内部状态维度定位。用于黑屏、网络、控制、配对、无线、Web UI 独有设置和机群巡检；检查点只在同一会话续查，结案仅保留总结。"
 ---
 
 # WyreStorm 分层排障与按需全量审计
@@ -121,7 +121,20 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ## 假设账本
 
-在 `hypothesis-ledger.csv` 中保留少量、可判别的候选假设。每条写明分类、诊断维度、优先级、支持证据、反证、状态和下一条最小判别动作；状态使用 `active|supported|weakened|rejected|confirmed|blocked`。新证据到达后更新旧行，不用纯叙述不断新增同义假设。优先执行信息增益高、风险和成本低的判别动作。
+在 `hypothesis-ledger.csv` 中保留可判别的候选假设。每条写明分类、诊断维度、agent 排名、支持证据、反证、状态和下一条最小判别动作；状态使用 `active|supported|weakened|rejected|confirmed|blocked`。新证据到达后更新旧行，不用纯叙述不断新增同义假设。优先执行信息增益高、风险和成本低的判别动作。
+
+## 候选问题多选门（正式排查前强制）
+
+当用户询问完成、所有当前已收到资料满足对应审阅门、产品预检和初始分类完成后，读取 [候选问题多选规则](references/candidate-diagnostic-selection.md)。在正式锁定问题、生成诊断执行行或发送设备查询前，列出全部有现场依据、尚未排除且互不重复的可能问题，让用户一次多选优先排查项。
+
+- 每项使用稳定 `H-xxx` 编号，写清可能问题、分类/诊断维度、为什么仍可能、反证或缺口、当前可能性、首个最小验证动作、预计成本/影响，以及是否可能需要另行授权的写操作。
+- 使用客户端原生多选控件（如果确实支持）；否则使用 Markdown 复选框，明确让用户回复多个编号，例如 `H-001,H-003,H-006`。同时提供 `全部排查` 和 `你来决定顺序` 两种回答方式。
+- agent 可以标注“建议优先”的默认组合，但不能替用户勾选。用户选择只决定排查顺序，不证明所选项为根因，也不把未选项标为 `rejected`；未选项保留在 backlog。
+- 把展示、选择和优先级写回 `hypothesis-ledger.csv`，并将 `diagnostic_selection_status` 依次设为 `pending_user`、`selected`；用户明确说“你来决定”时设为 `customer_deferred`，由 agent 按信息增益、风险和成本排序。
+- 多选不是写操作授权。若所选路径之后需要 Pair/SET/Save/重启/复位等改变状态的动作，仍需对准确设备和动作单独授权。
+- 新证据出现新的合理候选或实质改变排序时，只向用户展示增量变化并允许追加/调整选择；不要在每轮无变化时反复要求多选。
+
+`diagnostic_selection_status` 未达到 `selected|customer_deferred` 时，不得向 `progress-ledger.csv` 添加执行行或开始设备诊断。用户暂不选择且不委托 agent 排序时，保持 `pending_user` 并等待，不擅自继续。
 
 ## 基线、无痕改动与设备本体状态
 
@@ -199,7 +212,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 - `device-inventory.csv`：设备、子设备、稳定 ID、版本、能力、组别、在线状态和发现证据。
 - `progress-ledger.csv`：每个实际选择的 `(device_id, command_id, 标准化参数集合)` 一行，并记录模式、层级和选择理由。
 - `physical-action-ledger.csv`：单设备/物理外设场景中由用户完成的动作、观察、随后只读复测和结果。
-- `hypothesis-ledger.csv`：按优先级维护假设、支持/反证、状态和下一条最小判别动作。
+- `hypothesis-ledger.csv`：按优先级维护假设、支持/反证、状态和下一条最小判别动作，并记录候选是否已展示、用户多选结果、客户优先级、选择原话和更新时间；未选择不等于排除。
 - `coverage-audit.csv`：预期/实际字段以及缺失、条件性、脱敏、不支持和额外字段。
 - `raw/`：逐字响应和脱敏后的请求元数据；每次尝试单独保存，不覆盖历史。
 - `findings.md`、`checkpoint-log.md`、`session-handoff.md`、`checkpoint.json`、`final-report.md`：结论、检查点、续查状态和报告。
@@ -212,7 +225,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 1. 从当前对话上下文取得准确 `CaseRoot` 和 `session_nonce`；不得通过目录搜索恢复它们。
 2. 读取该目录的 `session-handoff.md`、`checkpoint.json`、`intake.md`、`user-actions.csv`、`web-ui-session-ledger.csv`、`source/customer-file-index.csv`、`customer-file-review.md`、`baseline-index.csv`、`baseline-comparison.csv`、`command-source-audit.csv`、`physical-action-ledger.csv`、`hypothesis-ledger.csv`、`wyrestorm-official-research.md`、`classification.md`、文档索引、各 CSV 和 `checkpoint-log.md` 末尾。
-3. 核对 checkpoint 中的 nonce 与当前会话保存的值一致，再核对 intake、Web UI 会话仍属于用户当前打开的同一设备页面、客户文件清单及阅读覆盖、产品资料预检、命令来源核对、分类、`scan_mode`、`case_shape`、目标范围、文档指纹、设备身份和 API 配置；不一致时停止续查。compacting 后不得假设旧 Cookie/会话仍有效，调用前重新核对页面身份和登录状态。
+3. 核对 checkpoint 中的 nonce 与当前会话保存的值一致，再核对 intake、Web UI 会话仍属于用户当前打开的同一设备页面、客户文件清单及阅读覆盖、产品资料预检、命令来源核对、分类、候选问题多选状态、`scan_mode`、`case_shape`、目标范围、文档指纹、设备身份和 API 配置；不一致时停止续查。compacting 后不得假设旧 Cookie/会话仍有效，调用前重新核对页面身份和登录状态。
 4. 若用户补充了操作、文件或现场发生变化，先更新时间线或文件审阅状态，再重新评估分类和已完成证据的有效性。
 5. 将 `in_progress` 行与原始尝试文件核对；证据和当前模式要求的字段检查均完成才改为 `completed`，否则保留旧尝试并继续。
 6. 选择当前模式下第一个适用且未完成的记录，不重复仍有效的已完成记录。
@@ -223,19 +236,20 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ### `triage`：默认快速排障
 
-1. 先让用户打开并登录相关 Web UI，确认 agent 是否可使用当前会话做只读诊断；再完成 intake、按角色审阅文件、本地优先的产品预检和命令来源核对，登记已有基线并建立有排序的假设清单。
-2. `single_physical` 只查询主机身份和症状相关状态；无 API 外设进入“用户动作—观察—只读复测”循环，不建立 cohort 或全员 core 矩阵。
-3. `fleet` 才发现设备、形成 API 配置组，对所有在线设备运行核心健康普查。
-4. 保存首次动作前的 `session_start` 快照；根据假设、用户时间线和异常信号只加载需要的诊断命令。
-5. 每轮更新假设状态和最小判别动作；证据足够或明确阻塞时停止，列出未执行范围，不能宣称全量覆盖。
+1. 先让用户打开并登录相关 Web UI，确认 agent 是否可使用当前会话做只读诊断；再完成 intake、按角色审阅文件、本地优先的产品预检和命令来源核对，登记已有基线并建立候选假设清单。
+2. 把全部合理候选以多选形式交给用户；只有 `diagnostic_selection_status=selected|customer_deferred` 后，才按选择顺序建立诊断执行行。
+3. `single_physical` 只查询主机身份和症状相关状态；无 API 外设进入“用户动作—观察—只读复测”循环，不建立 cohort 或全员 core 矩阵。
+4. `fleet` 才发现设备、形成 API 配置组，对所有在线设备运行核心健康普查。
+5. 保存首次动作前的 `session_start` 快照；根据用户选择、假设、时间线和异常信号只加载需要的诊断命令。
+6. 每轮更新假设状态和最小判别动作；证据足够或明确阻塞时停止，列出未执行范围，不能宣称全量覆盖。
 
 ### `deep`：定向深挖
 
-先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类。围绕指定设备或问题域建立最小充分命令集，优先使用该设备同源 Web 会话中的 Web-only 只读 API；沿依赖链收集支持与反证，避免无关端口、页面和参数组合。若发现故障可能跨设备传播，可把受影响链路设备加入范围，但要记录加入原因。
+先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类。列出全部合理候选让用户多选；随后围绕所选设备或问题域建立最小充分命令集，优先使用同源 Web 会话中的 Web-only 只读 API。未选候选保留在 backlog，不写成已排除。
 
 ### `audit`：全量覆盖
 
-先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类；分类不缩减审计范围，但用于报告问题上下文。完整读取适用命令资料并编制每条命令。对每台适用在线设备穷尽所有有限参数、页码和游标，保存全部响应并审计每个预期字段。汇总命令只有在适用来源明确证明与详细命令等价时才能替代详细查询。
+先完成相关 Web UI 打开/登录与只读会话确认，再完成 intake、按角色审阅客户文件、本地优先的产品资料预检、命令来源核对和初始分类；列出全部合理候选并允许用户多选排查顺序。`audit` 的选择只改变顺序，不缩减用户明确要求的全量范围。完整读取适用命令资料并编制每条命令，对每台适用在线设备穷尽所有有限参数、页码和游标。
 
 收尾时重复发现，直到连续两次没有未扫描的新在线设备。存在任何 `not_started`、`in_progress`、失败、阻塞或字段缺口时，结果必须标记为部分完成/未完成。
 
@@ -251,7 +265,7 @@ description: "对单台、带物理外设或多台 WyreStorm/IPAV/OEM 设备做�
 
 ## 诊断完成与结案清理
 
-`findings.md` 先写有证据路径的确认事实，再写诊断判断和反证。`final-report.md` 必须包含用户已执行操作摘要、Web UI 打开/登录与只读会话使用情况、使用过的 Web-only API 及其同源/同传输依据、客户文件清单与阅读覆盖证明、与结论有关的本地知识库/官网/固件命令来源及其适用性、最终分类与置信度、模式、`case_shape`、范围、文档/版本指纹、执行/失败/阻塞统计、脱敏情况和未解决缺口。
+`findings.md` 先写有证据路径的确认事实，再写诊断判断和反证。`final-report.md` 必须包含用户已执行操作摘要、候选问题完整清单与用户多选结果（包括未选但未排除项）、Web UI 会话与 Web-only API 依据、客户文件阅读覆盖、关键资料来源、最终分类与置信度、模式、范围、执行统计、脱敏情况和未解决缺口。
 
 - `triage` 完成表示核心普查和所选异常的诊断范围完成，不表示所有 API 字段已采集。
 - `deep` 完成表示指定问题域已有充分证据或明确阻塞，不表示设备全量覆盖。

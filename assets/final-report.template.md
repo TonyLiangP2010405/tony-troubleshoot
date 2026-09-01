@@ -22,6 +22,10 @@ List every received file, its hash, total verifiable scope, scope actually inspe
 
 Report primary and secondary categories, `confirmed` or `inconclusive` status, confidence, supporting and contradicting evidence, excluded alternatives, and any change from the provisional intake classification.
 
+## Candidate problems and customer priorities
+
+List every candidate that was shown after material review, the evidence and counterevidence available at that time, agent recommendation, customer multi-selection and order, unselected backlog, later additions or reprioritization, and final hypothesis outcome. State explicitly that customer selection controlled order only and did not prove causality or authorize writes.
+
 ## Product-context research preflight
 
 List only the official sources that materially affected this case. For each, record the exact URL, access time, applicable model/series and firmware/API version, confirmed fact, and diagnostic effect. If official research was unavailable, record the reason and which local or user-provided documents were used instead. Do not present inference as an official statement.

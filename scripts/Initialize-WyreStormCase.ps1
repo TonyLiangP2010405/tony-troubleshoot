@@ -125,7 +125,7 @@ $csvHeaders = @{
     "device-inventory.csv" = "device_id,parent_device_id,interface_type,cohort_id,api_profile_id,capability_signature,ip_or_endpoint,model,serial,firmware,online_status,first_seen,last_seen,discovery_command,discovery_evidence,scan_status,notes"
     "progress-ledger.csv" = "record_id,scan_mode,scan_tier,cohort_id,selection_reason,device_id,command_id,parameter_key,status,attempt,started_at,completed_at,raw_path,result_summary,error,doc_reference"
     "physical-action-ledger.csv" = "cycle_id,hypothesis_id,target,requested_action,observation_requested,safety_impact,user_authorized,user_performed_at,user_observation,readonly_retest_command,retest_evidence,result,status,updated_at,notes"
-    "hypothesis-ledger.csv" = "hypothesis_id,rank,statement,primary_category,diagnostic_dimension,status,supporting_evidence,contradicting_evidence,next_discriminator,cost_risk,updated_at,notes"
+    "hypothesis-ledger.csv" = "hypothesis_id,rank,statement,primary_category,diagnostic_dimension,status,likelihood,supporting_evidence,contradicting_evidence,next_discriminator,cost_risk,write_action_possible,customer_visible,customer_selected,customer_priority,customer_selection_note,selection_updated_at,updated_at,notes"
     "coverage-audit.csv" = "scan_mode,coverage_level,device_id,command_id,parameter_key,expected_fields,observed_fields,missing_fields,conditional_fields,redacted_fields,extra_fields,coverage_status,evidence_path,updated_at"
     "user-actions.csv" = "sequence,timestamp_or_order,actor,action_type,target_device,target_port_or_menu,before_state,after_state,result,reverted,evidence_path,notes"
 }
@@ -151,12 +151,12 @@ foreach ($entry in $templateMap.GetEnumerator()) {
 
 $now = (Get-Date).ToString("o")
 $nextAction = switch ($ScanMode) {
-    "triage" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, case shape, file roles, command-source reconciliation, and provisional classification" }
-    "deep" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, command-source reconciliation, and fault-domain definition" }
-    "audit" { "Ask the user to open and log in to the relevant Web UI, record read-only session readiness, then complete intake, local-first research, command-source reconciliation, prerequisites, and the complete command catalog" }
+    "triage" { "Open and log in to the relevant Web UI, complete intake and all current material review, build the candidate list, then ask the user to multi-select diagnostic priorities before creating execution rows" }
+    "deep" { "Open and log in to the relevant Web UI, complete intake and all current material review, build the candidate list, then ask the user to multi-select the fault domains to investigate first" }
+    "audit" { "Open and log in to the relevant Web UI, complete intake and all current material review, show all candidate problems for multi-select ordering, then build the full audit catalog" }
 }
 $checkpoint = [ordered]@{
-    schema_version = 9
+    schema_version = 10
     case_id = $CaseId
     case_root = $resolvedCaseRoot
     session_scope = "current_session_only"
@@ -174,6 +174,8 @@ $checkpoint = [ordered]@{
     official_research_updated_at = $null
     command_source_status = "not_started"
     command_source_updated_at = $null
+    diagnostic_selection_status = "not_started"
+    diagnostic_selection_updated_at = $null
     classification_status = "not_started"
     primary_category = $null
     secondary_categories = @()
@@ -186,6 +188,7 @@ $checkpoint = [ordered]@{
     command_source_count = 0
     physical_action_cycle_count = 0
     hypothesis_count = 0
+    customer_selected_hypothesis_count = 0
     baseline_count = 0
     baseline_comparison_count = 0
     command_count = 0

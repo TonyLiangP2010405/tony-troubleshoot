@@ -36,6 +36,9 @@ param(
     [ValidateSet("", "not_started", "complete", "partial", "unavailable")]
     [string]$CommandSourceStatus = "",
 
+    [ValidateSet("", "not_started", "pending_user", "selected", "customer_deferred", "blocked")]
+    [string]$DiagnosticSelectionStatus = "",
+
     [ValidateSet("", "not_started", "provisional", "confirmed", "inconclusive")]
     [string]$ClassificationStatus = "",
 
@@ -276,6 +279,21 @@ $commandSourceUpdatedAtValue = if ($PSBoundParameters.ContainsKey("CommandSource
 } else {
     $null
 }
+$oldDiagnosticSelectionStatus = if ($oldCheckpoint.PSObject.Properties.Name -contains "diagnostic_selection_status" -and $oldCheckpoint.diagnostic_selection_status) {
+    [string]$oldCheckpoint.diagnostic_selection_status
+} elseif ($schemaVersion -ge 10) {
+    "not_started"
+} else {
+    "legacy_untracked"
+}
+$diagnosticSelectionStatusValue = if ($DiagnosticSelectionStatus) { $DiagnosticSelectionStatus } else { $oldDiagnosticSelectionStatus }
+$diagnosticSelectionUpdatedAtValue = if ($PSBoundParameters.ContainsKey("DiagnosticSelectionStatus")) {
+    $now
+} elseif ($oldCheckpoint.PSObject.Properties.Name -contains "diagnostic_selection_updated_at") {
+    $oldCheckpoint.diagnostic_selection_updated_at
+} else {
+    $null
+}
 
 $classificationStatusValue = if ($ClassificationStatus) {
     $ClassificationStatus
@@ -379,6 +397,32 @@ if ($classificationStatusValue -ne "not_started" -and -not $primaryCategoryValue
 if ($classificationStatusValue -eq "not_started" -and ($primaryCategoryValue -or $secondaryCategoriesValue.Count -gt 0 -or $classificationConfidenceValue)) {
     throw "Set ClassificationStatus when recording a category or confidence."
 }
+$selectableHypotheses = @($hypotheses | Where-Object { $_.status -in @("active", "supported", "weakened", "blocked") })
+$visibleHypotheses = @($selectableHypotheses | Where-Object { $_.customer_visible -match "^(?i:yes|true|1)$" })
+$selectedHypotheses = @($visibleHypotheses | Where-Object { $_.customer_selected -match "^(?i:yes|true|1)$" })
+if ($schemaVersion -ge 10 -and $diagnosticSelectionStatusValue -ne "not_started" -and $classificationStatusValue -eq "not_started") {
+    throw "Create the provisional problem classification before presenting or recording candidate-problem selection."
+}
+if ($schemaVersion -ge 10 -and $diagnosticSelectionStatusValue -in @("pending_user", "selected", "customer_deferred")) {
+    if ($selectableHypotheses.Count -eq 0) {
+        throw "Candidate-problem selection requires at least one unresolved hypothesis."
+    }
+    if ($visibleHypotheses.Count -ne $selectableHypotheses.Count) {
+        throw "Show every unresolved candidate to the user by setting customer_visible=yes before recording diagnostic selection."
+    }
+}
+if ($schemaVersion -ge 10 -and $diagnosticSelectionStatusValue -eq "selected") {
+    if ($selectedHypotheses.Count -eq 0) {
+        throw "DiagnosticSelectionStatus selected requires at least one customer_selected=yes hypothesis."
+    }
+    $unrecordedChoices = @($visibleHypotheses | Where-Object { $_.customer_selected -notmatch "^(?i:yes|true|1|no|false|0)$" })
+    if ($unrecordedChoices.Count -gt 0) {
+        throw "Record customer_selected=yes|no for every visible candidate before setting DiagnosticSelectionStatus selected."
+    }
+}
+if ($schemaVersion -ge 10 -and ($ledger.Count -gt 0 -or $physicalActionCycles.Count -gt 0) -and $diagnosticSelectionStatusValue -notin @("selected", "customer_deferred")) {
+    throw "Do not create command or physical-action execution rows until the user has multi-selected candidates or explicitly delegated ordering."
+}
 $onlineDevices = @($devices | Where-Object { $_.online_status -match "^(?i:online|up|connected|active|true|1)$" })
 $cohorts = @($devices | Where-Object { $_.cohort_id } | Select-Object -ExpandProperty cohort_id -Unique)
 $completed = @($ledger | Where-Object { $_.status -eq "completed" })
@@ -407,6 +451,8 @@ $checkpoint = [ordered]@{
     official_research_updated_at = $officialResearchUpdatedAtValue
     command_source_status = $commandSourceStatusValue
     command_source_updated_at = $commandSourceUpdatedAtValue
+    diagnostic_selection_status = $diagnosticSelectionStatusValue
+    diagnostic_selection_updated_at = $diagnosticSelectionUpdatedAtValue
     classification_status = $classificationStatusValue
     primary_category = $primaryCategoryValue
     secondary_categories = $secondaryCategoriesValue
@@ -419,6 +465,7 @@ $checkpoint = [ordered]@{
     command_source_count = $commandSources.Count
     physical_action_cycle_count = $physicalActionCycles.Count
     hypothesis_count = $hypotheses.Count
+    customer_selected_hypothesis_count = $selectedHypotheses.Count
     baseline_count = $baselines.Count
     baseline_comparison_count = $baselineComparisons.Count
     command_count = $commands.Count
@@ -453,13 +500,14 @@ $handoff = @"
 - Customer file review status: $customerFileReviewStatusValue
 - WyreStorm product-context research status: $officialResearchStatusValue
 - Command-source reconciliation status: $commandSourceStatusValue
+- Candidate-problem selection status: $diagnosticSelectionStatusValue
 - Classification: $classificationStatusValue / $(if ($primaryCategoryValue) { $primaryCategoryValue } else { "none" }) / $(if ($classificationConfidenceValue) { $classificationConfidenceValue } else { "none" }) confidence
 - Secondary categories: $(if ($secondaryCategoriesValue.Count -gt 0) { $secondaryCategoriesValue -join ", " } else { "none" })
 - Last completed record: $(if ($LastCompletedRecord) { $LastCompletedRecord } else { "none recorded" })
 - Next action: $NextAction
 - Documents / commands: $($documents.Count) / $($commands.Count)
 - Baselines / comparisons: $($baselines.Count) / $($baselineComparisons.Count)
-- Web UI sessions / command sources / physical cycles / hypotheses: $($webUiSessions.Count) / $($commandSources.Count) / $($physicalActionCycles.Count) / $($hypotheses.Count)
+- Web UI sessions / command sources / physical cycles / hypotheses / customer-selected: $($webUiSessions.Count) / $($commandSources.Count) / $($physicalActionCycles.Count) / $($hypotheses.Count) / $($selectedHypotheses.Count)
 - Cohorts / online devices / selected matrix rows: $($cohorts.Count) / $($onlineDevices.Count) / $($ledger.Count)
 - Completed / failed / blocked / unfinished: $($completed.Count) / $($failed.Count) / $($blocked.Count) / $($notFinished.Count)
 - Completed by tier (core / diagnostic / audit): $($coreCompleted.Count) / $($diagnosticCompleted.Count) / $($auditCompleted.Count)

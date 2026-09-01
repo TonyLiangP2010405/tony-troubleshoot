@@ -10,10 +10,11 @@
 - Customer file review status: pending
 - WyreStorm product-context research status: not started
 - Command-source reconciliation status: not started
+- Candidate-problem selection status: not started
 - Classification: not started
 - Last completed record: none
 - Baselines / comparisons: 0 / 0
-- Web UI sessions / command sources / physical cycles / hypotheses: 0 / 0 / 0 / 0
+- Web UI sessions / command sources / physical cycles / hypotheses / customer-selected: 0 / 0 / 0 / 0 / 0
 - Next action: {{NEXT_ACTION}}
 - Current inventory state: not started
 - Current coverage state: not started

@@ -12,11 +12,13 @@ Record the current primary and secondary categories, status, confidence, support
 
 Summarize active rows from `hypothesis-ledger.csv`:
 
-| Rank | Hypothesis | Category / dimension | Status | Supporting evidence | Contradicting evidence | Next smallest discriminator |
-|---|---|---|---|---|---|---|
-| 1 |  |  | active |  |  |  |
+| Agent rank | Hypothesis | Category / dimension | Likelihood / status | Shown to customer | Customer selected / priority | Supporting / contradicting evidence | Next smallest discriminator |
+|---|---|---|---|---|---|---|---|
+| 1 |  |  | medium / active | yes | yes / 1 |  |  |
 
 Update, weaken, reject, or confirm existing hypotheses after each physical-action/read-only-retest cycle; do not retain duplicate wording as separate candidates.
+
+Record the customer's exact multi-selection, `全部排查`, or `你来决定顺序` response. Unselected candidates remain active backlog unless later evidence rejects them.
 
 ## Customer-file evidence
 
